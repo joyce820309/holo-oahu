@@ -1,0 +1,221 @@
+{
+  "appName": "Holo",
+  "appSubtitle": "our Oahu journey",
+  "lang": "中文",
+  "theme": {
+    "dusk": "Oahu Dusk",
+    "blue": "Hanalei Blue"
+  },
+  "nav": {
+    "trip":      "行程",
+    "map":       "地圖",
+    "packing":   "打包",
+    "expenses":  "費用",
+    "more":      "更多",
+    "emergency": "緊急",
+    "members":   "成員",
+    "settings":  "設定"
+  },
+  "home": {
+    "title":       "行程總覽",
+    "taiwan":      "台灣",
+    "hawaii":      "夏威夷",
+    "seoul":       "首爾",
+    "tripDates":   "7/18 – 7/26",
+    "daysLeft":    "天後出發",
+    "tripStarted": "旅程進行中",
+    "noTrip":      "尚無行程資料"
+  },
+  "weather": {
+    "temp":     "溫度",
+    "wind":     "風速",
+    "humidity": "濕度",
+    "code": {
+      "0":  "晴天",
+      "1":  "大致晴",
+      "2":  "局部多雲",
+      "3":  "陰天",
+      "45": "霧",
+      "48": "霧淞",
+      "51": "毛毛雨",
+      "61": "小雨",
+      "63": "中雨",
+      "65": "大雨",
+      "80": "陣雨",
+      "95": "雷陣雨"
+    }
+  },
+  "activities": {
+    "title":      "活動行程",
+    "new":        "新增活動",
+    "edit":       "編輯活動",
+    "noData":     "尚無活動",
+    "type": {
+      "restaurant": "餐廳",
+      "attraction": "景點",
+      "beach":      "海灘",
+      "experience": "體驗",
+      "other":      "其他"
+    },
+    "fields": {
+      "titleZh":    "標題（中文）",
+      "titleEn":    "Title (English)",
+      "locationZh": "地點（中文）",
+      "locationEn": "Location (English)",
+      "addressZh":  "地址（中文）",
+      "addressEn":  "Address (English)",
+      "noteZh":     "備注（中文）",
+      "noteEn":     "Note (English)",
+      "type":       "類型",
+      "date":       "日期",
+      "startTime":  "開始時間",
+      "endTime":    "結束時間",
+      "images":     "圖片（最多 2 張）",
+      "lat":        "緯度",
+      "lng":        "經度",
+      "mapLink":    "地圖連結"
+    },
+    "transport": {
+      "title":    "交通",
+      "mode": {
+        "car":     "自駕",
+        "bus":     "公車",
+        "taxi":    "計程車",
+        "walk":    "步行",
+        "shuttle": "接駁",
+        "none":    "無"
+      },
+      "duration": "分鐘",
+      "noteZh":   "交通備注（中文）",
+      "noteEn":   "Transport Note (English)"
+    }
+  },
+  "flights": {
+    "title":       "機票",
+    "new":         "新增機票",
+    "edit":        "編輯機票",
+    "noData":      "尚無機票記錄",
+    "fields": {
+      "flightNo":    "航班號",
+      "airline":     "航空公司",
+      "from":        "出發地",
+      "to":          "目的地",
+      "departAt":    "出發時間",
+      "arriveAt":    "抵達時間",
+      "seat":        "座位",
+      "confirmCode": "確認碼",
+      "note":        "備注"
+    }
+  },
+  "hotels": {
+    "title":       "住宿",
+    "new":         "新增住宿",
+    "edit":        "編輯住宿",
+    "noData":      "尚無住宿記錄",
+    "fields": {
+      "nameZh":      "飯店名稱（中文）",
+      "nameEn":      "Hotel Name (English)",
+      "addressZh":   "地址（中文）",
+      "addressEn":   "Address (English)",
+      "checkIn":     "入住日期",
+      "checkOut":    "退房日期",
+      "confirmCode": "確認碼",
+      "phone":       "飯店電話",
+      "note":        "備注"
+    }
+  },
+  "packing": {
+    "title":   "打包清單",
+    "new":     "新增項目",
+    "noData":  "清單為空",
+    "categories": {
+      "clothing":    "衣物",
+      "documents":   "證件",
+      "medicine":    "藥品",
+      "electronics": "電子",
+      "toiletries":  "盥洗",
+      "other":       "其他"
+    },
+    "fields": {
+      "itemZh":    "項目（中文）",
+      "itemEn":    "Item (English)",
+      "category":  "分類",
+      "owner":     "負責人",
+      "shared":    "共用"
+    }
+  },
+  "expenses": {
+    "title":    "費用記帳",
+    "new":      "新增費用",
+    "noData":   "尚無費用記錄",
+    "total":    "總計",
+    "twdTotal": "台幣總計",
+    "categories": {
+      "food":          "餐飲",
+      "transport":     "交通",
+      "accommodation": "住宿",
+      "activity":      "活動",
+      "shopping":      "購物",
+      "other":         "其他"
+    },
+    "fields": {
+      "title":    "標題",
+      "amount":   "金額",
+      "currency": "幣別",
+      "category": "分類",
+      "date":     "日期",
+      "paidBy":   "付款人"
+    }
+  },
+  "emergency": {
+    "title": "緊急資訊",
+    "hawaii": "夏威夷",
+    "seoul":  "首爾",
+    "korea_transit": "韓國轉機",
+    "taiwan": "台灣（緊急返台）",
+    "custom": "自訂聯絡人",
+    "addContact": "新增聯絡人",
+    "fields": {
+      "name":     "姓名",
+      "phone":    "電話",
+      "relation": "關係",
+      "note":     "備注"
+    }
+  },
+  "map": { "title": "地圖" },
+  "members": {
+    "title":    "協作成員",
+    "invite":   "邀請連結",
+    "copy":     "複製邀請連結",
+    "roles": {
+      "owner":  "擁有者",
+      "editor": "編輯者",
+      "viewer": "檢視者"
+    }
+  },
+  "settings": {
+    "title":    "設定",
+    "language": "語言",
+    "theme":    "主題",
+    "notifications": "推播通知",
+    "enablePush": "開啟推播"
+  },
+  "common": {
+    "save":    "儲存",
+    "cancel":  "取消",
+    "delete":  "刪除",
+    "edit":    "編輯",
+    "confirm": "確認刪除？",
+    "copy":    "複製地址",
+    "copied":  "已複製",
+    "openMap": "Google Maps",
+    "naverMap": "Naver Maps",
+    "loading": "載入中",
+    "offline": "目前離線，顯示快取資料",
+    "images":  "圖片",
+    "upload":  "上傳圖片",
+    "login":   "使用 Google 登入",
+    "logout":  "登出",
+    "call":    "撥打電話"
+  }
+}

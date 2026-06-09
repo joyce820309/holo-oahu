@@ -1,0 +1,221 @@
+{
+  "appName": "Holo",
+  "appSubtitle": "our Oahu journey",
+  "lang": "EN",
+  "theme": {
+    "dusk": "Oahu Dusk",
+    "blue": "Hanalei Blue"
+  },
+  "nav": {
+    "trip":      "Trip",
+    "map":       "Map",
+    "packing":   "Packing",
+    "expenses":  "Expenses",
+    "more":      "More",
+    "emergency": "Emergency",
+    "members":   "Members",
+    "settings":  "Settings"
+  },
+  "home": {
+    "title":       "Trip Overview",
+    "taiwan":      "Taiwan",
+    "hawaii":      "Hawaii",
+    "seoul":       "Seoul",
+    "tripDates":   "Jul 18 – Jul 26",
+    "daysLeft":    "days until departure",
+    "tripStarted": "Trip in progress",
+    "noTrip":      "No trip data yet"
+  },
+  "weather": {
+    "temp":     "Temp",
+    "wind":     "Wind",
+    "humidity": "Humidity",
+    "code": {
+      "0":  "Clear sky",
+      "1":  "Mainly clear",
+      "2":  "Partly cloudy",
+      "3":  "Overcast",
+      "45": "Fog",
+      "48": "Rime fog",
+      "51": "Drizzle",
+      "61": "Light rain",
+      "63": "Moderate rain",
+      "65": "Heavy rain",
+      "80": "Rain showers",
+      "95": "Thunderstorm"
+    }
+  },
+  "activities": {
+    "title":  "Activities",
+    "new":    "Add Activity",
+    "edit":   "Edit Activity",
+    "noData": "No activities yet",
+    "type": {
+      "restaurant": "Restaurant",
+      "attraction": "Attraction",
+      "beach":      "Beach",
+      "experience": "Experience",
+      "other":      "Other"
+    },
+    "fields": {
+      "titleZh":    "Title (Chinese)",
+      "titleEn":    "Title (English)",
+      "locationZh": "Location (Chinese)",
+      "locationEn": "Location (English)",
+      "addressZh":  "Address (Chinese)",
+      "addressEn":  "Address (English)",
+      "noteZh":     "Note (Chinese)",
+      "noteEn":     "Note (English)",
+      "type":       "Type",
+      "date":       "Date",
+      "startTime":  "Start Time",
+      "endTime":    "End Time",
+      "images":     "Photos (max 2)",
+      "lat":        "Latitude",
+      "lng":        "Longitude",
+      "mapLink":    "Map Link"
+    },
+    "transport": {
+      "title":    "Transport",
+      "mode": {
+        "car":     "Car",
+        "bus":     "Bus",
+        "taxi":    "Taxi",
+        "walk":    "Walk",
+        "shuttle": "Shuttle",
+        "none":    "None"
+      },
+      "duration": "min",
+      "noteZh":   "Transport Note (Chinese)",
+      "noteEn":   "Transport Note (English)"
+    }
+  },
+  "flights": {
+    "title":  "Flights",
+    "new":    "Add Flight",
+    "edit":   "Edit Flight",
+    "noData": "No flights yet",
+    "fields": {
+      "flightNo":    "Flight No.",
+      "airline":     "Airline",
+      "from":        "From",
+      "to":          "To",
+      "departAt":    "Departs",
+      "arriveAt":    "Arrives",
+      "seat":        "Seat",
+      "confirmCode": "Confirmation Code",
+      "note":        "Note"
+    }
+  },
+  "hotels": {
+    "title":  "Hotels",
+    "new":    "Add Hotel",
+    "edit":   "Edit Hotel",
+    "noData": "No hotels yet",
+    "fields": {
+      "nameZh":      "Hotel Name (Chinese)",
+      "nameEn":      "Hotel Name (English)",
+      "addressZh":   "Address (Chinese)",
+      "addressEn":   "Address (English)",
+      "checkIn":     "Check-in",
+      "checkOut":    "Check-out",
+      "confirmCode": "Confirmation Code",
+      "phone":       "Hotel Phone",
+      "note":        "Note"
+    }
+  },
+  "packing": {
+    "title":  "Packing List",
+    "new":    "Add Item",
+    "noData": "List is empty",
+    "categories": {
+      "clothing":    "Clothing",
+      "documents":   "Documents",
+      "medicine":    "Medicine",
+      "electronics": "Electronics",
+      "toiletries":  "Toiletries",
+      "other":       "Other"
+    },
+    "fields": {
+      "itemZh":   "Item (Chinese)",
+      "itemEn":   "Item (English)",
+      "category": "Category",
+      "owner":    "Owner",
+      "shared":   "Shared"
+    }
+  },
+  "expenses": {
+    "title":    "Expenses",
+    "new":      "Add Expense",
+    "noData":   "No expenses yet",
+    "total":    "Total",
+    "twdTotal": "TWD Total",
+    "categories": {
+      "food":          "Food",
+      "transport":     "Transport",
+      "accommodation": "Accommodation",
+      "activity":      "Activity",
+      "shopping":      "Shopping",
+      "other":         "Other"
+    },
+    "fields": {
+      "title":    "Title",
+      "amount":   "Amount",
+      "currency": "Currency",
+      "category": "Category",
+      "date":     "Date",
+      "paidBy":   "Paid by"
+    }
+  },
+  "emergency": {
+    "title": "Emergency Info",
+    "hawaii": "Hawaii",
+    "seoul":  "Seoul",
+    "korea_transit": "Korea Transit",
+    "taiwan": "Taiwan (Emergency Return)",
+    "custom": "Custom Contacts",
+    "addContact": "Add Contact",
+    "fields": {
+      "name":     "Name",
+      "phone":    "Phone",
+      "relation": "Relation",
+      "note":     "Note"
+    }
+  },
+  "map": { "title": "Map" },
+  "members": {
+    "title":  "Members",
+    "invite": "Invite Link",
+    "copy":   "Copy Invite Link",
+    "roles": {
+      "owner":  "Owner",
+      "editor": "Editor",
+      "viewer": "Viewer"
+    }
+  },
+  "settings": {
+    "title":         "Settings",
+    "language":      "Language",
+    "theme":         "Theme",
+    "notifications": "Push Notifications",
+    "enablePush":    "Enable Push"
+  },
+  "common": {
+    "save":    "Save",
+    "cancel":  "Cancel",
+    "delete":  "Delete",
+    "edit":    "Edit",
+    "confirm": "Confirm delete?",
+    "copy":    "Copy Address",
+    "copied":  "Copied",
+    "openMap": "Google Maps",
+    "naverMap": "Naver Maps",
+    "loading": "Loading",
+    "offline": "You're offline. Showing cached data.",
+    "images":  "Photos",
+    "upload":  "Upload Photo",
+    "login":   "Sign in with Google",
+    "logout":  "Sign out",
+    "call":    "Call"
+  }
+}

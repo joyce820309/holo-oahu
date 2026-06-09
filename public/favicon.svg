@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e8d5c4"/>
+      <stop offset="100%" stop-color="#b8c8d8"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#bg)"/>
+  <!-- sun -->
+  <circle cx="16" cy="11" r="4" fill="#c47a5a" opacity="0.9"/>
+  <!-- waves -->
+  <path d="M4 20 Q8 17 12 20 Q16 23 20 20 Q24 17 28 20" stroke="#c47a5a" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <path d="M4 25 Q8 22 12 25 Q16 28 20 25 Q24 22 28 25" stroke="#c47a5a" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.55"/>
+</svg>
