@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore'
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 import { getMessaging, getToken, onMessage } from 'firebase/messaging'
 
@@ -16,11 +16,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 export const auth     = getAuth(app)
-export const db       = getFirestore(app)
+export const db       = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+})
 export const storage  = getStorage(app)
 export const provider = new GoogleAuthProvider()
-
-enableIndexedDbPersistence(db).catch(console.error)
 
 let messaging = null
 try {
