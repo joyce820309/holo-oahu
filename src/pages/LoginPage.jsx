@@ -15,7 +15,7 @@ export default function LoginPage() {
 
       <div className="glass-card p-8 w-full max-w-sm flex flex-col items-center gap-6">
         <div className="text-secondary text-sm text-center">
-          7/18 – 7/26, 2025
+          7/18 – 7/26, 2026
         </div>
         <button className="btn-primary w-full justify-center gap-2" onClick={login}>
           <LogIn size={20} />

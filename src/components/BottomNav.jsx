@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, Map, Package, Wallet, MoreHorizontal, AlertTriangle, Users, Settings, X } from 'lucide-react'
+import { CalendarDays, Map, Package, Wallet, MoreHorizontal, AlertTriangle, Users, Settings, Bell, X } from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/trip', icon: CalendarDays, key: 'nav.trip', matchPrefix: '/trip' },
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
 ]
 
 const MORE_ITEMS = [
+  { to: '/trip/notifications', icon: Bell, key: 'nav.notifications' },
   { to: '/trip/emergency', icon: AlertTriangle, key: 'nav.emergency' },
   { to: '/trip/members',   icon: Users,         key: 'nav.members'   },
   { to: '/trip/settings',  icon: Settings,      key: 'nav.settings'  },

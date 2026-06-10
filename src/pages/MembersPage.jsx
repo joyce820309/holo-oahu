@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Copy, Check, UserMinus, UserCog } from 'lucide-react'
+import { doc, setDoc } from 'firebase/firestore'
+import { Copy, Check, UserMinus } from 'lucide-react'
 import { useTrip } from '../hooks/useTrip'
 import { useAuth } from '../contexts/AuthContext'
+import { db } from '../lib/firebase'
 import toast from 'react-hot-toast'
 
-const ROLES = ['owner', 'editor', 'viewer']
+const ROLES = ['owner', 'admin', 'editor', 'viewer']
 
 export default function MembersPage() {
   const { t } = useTranslation()
-  const { user } = useAuth()
+  const { user, canManageMembers } = useAuth()
   const { trip, updateTrip } = useTrip()
   const [copied, setCopied] = useState(false)
 
@@ -25,31 +27,34 @@ export default function MembersPage() {
     })
   }
 
+  const syncUserRole = (uid, role) => (
+    setDoc(doc(db, 'users', uid), { role }, { merge: true })
+  )
+
   const changeRole = async (uid, role) => {
     if (!trip) return
     const members = trip.members.map(m => m.uid === uid ? { ...m, role } : m)
     await updateTrip({ members })
+    await syncUserRole(uid, role)
   }
 
   const removeMember = async (uid) => {
     if (!trip) return
     const members = trip.members.filter(m => m.uid !== uid)
     await updateTrip({ members })
-    toast.success('已移除成員')
+    await syncUserRole(uid, 'viewer')
+    toast.success(t('common.delete'))
   }
-
-  const isOwner = trip?.members?.find(m => m.uid === user?.uid)?.role === 'owner'
 
   return (
     <div className="px-4 pb-24">
       <h2 className="text-primary font-medium text-xl py-4">{t('members.title')}</h2>
 
-      {/* Invite link */}
       <div className="glass-card p-4 mb-4">
         <p className="text-secondary text-sm mb-2">{t('members.invite')}</p>
         <div className="flex gap-2">
           <div className="glass-mini flex-1 px-3 py-2.5 text-secondary text-sm truncate rounded-xl">
-            {trip?.settings?.inviteCode ? `.../${trip.settings.inviteCode}` : '—'}
+            {trip?.settings?.inviteCode ? `.../${trip.settings.inviteCode}` : '-'}
           </div>
           <button className="btn-primary" onClick={copyInvite}>
             {copied ? <Check size={18} /> : <Copy size={18} />}
@@ -58,7 +63,6 @@ export default function MembersPage() {
         </div>
       </div>
 
-      {/* Members list */}
       <div className="glass-card divide-y" style={{ borderColor: 'var(--glass-border)' }}>
         {trip?.members?.map(member => (
           <div key={member.uid} className="flex items-center gap-3 px-4 py-3">
@@ -72,7 +76,7 @@ export default function MembersPage() {
               <p className="text-primary text-sm font-medium truncate">{member.displayName || member.email}</p>
               <p className="text-secondary text-xs">{member.email}</p>
             </div>
-            {isOwner && member.uid !== user?.uid ? (
+            {canManageMembers && member.uid !== user?.uid ? (
               <div className="flex gap-2">
                 <select
                   value={member.role}

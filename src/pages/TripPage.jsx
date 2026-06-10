@@ -22,7 +22,7 @@ export default function TripPage() {
             to={to}
             end={end}
             className={({ isActive }) =>
-              `flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              `flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-accent text-white'
                   : 'glass-mini text-secondary'

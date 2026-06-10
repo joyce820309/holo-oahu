@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../contexts/ThemeContext'
-import { Languages, Sun, Waves } from 'lucide-react'
+import { Sun, Waves } from 'lucide-react'
 
 export default function Header() {
   const { t, i18n } = useTranslation()
@@ -15,7 +15,10 @@ export default function Header() {
   const isZh = i18n.language === 'zh-TW'
 
   return (
-    <header className="glass-mini sticky top-0 z-50 flex items-center justify-between px-4 py-2.5 mx-2 mt-2">
+    <header
+      className="glass-mini sticky top-0 flex items-center justify-between px-4 py-2.5 mx-2 mt-2"
+      style={{ zIndex: 2147483647 }}
+    >
       <div className="flex items-center gap-1.5">
         <Waves size={18} style={{ color: 'var(--accent)' }} />
         <span className="font-medium text-primary text-base">{t('appName')}</span>
@@ -26,12 +29,10 @@ export default function Header() {
         {/* Language toggle — icon + short label */}
         <button
           onClick={toggleLang}
-          className="glass-mini flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
-          style={{ minHeight: 34, minWidth: 44 }}
+          className="glass-mini inline-flex h-9 w-11 items-center justify-center rounded-full p-0"
           aria-label="toggle language"
         >
-          <Languages size={14} style={{ color: 'var(--text-secondary)' }} />
-          <span className="text-xs font-medium" style={{ color: 'var(--accent)' }}>
+          <span className="block text-xs font-medium leading-none" style={{ color: 'var(--accent)' }}>
             {isZh ? '中' : 'EN'}
           </span>
         </button>
@@ -39,13 +40,12 @@ export default function Header() {
         {/* Theme toggle — sun/waves icon */}
         <button
           onClick={toggleTheme}
-          className="glass-mini flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
-          style={{ minHeight: 34, minWidth: 44 }}
+          className="glass-mini inline-flex h-9 w-11 items-center justify-center rounded-full p-0"
           aria-label="toggle theme"
         >
           {theme === 'dusk'
-            ? <Sun size={15} style={{ color: 'var(--accent)' }} />
-            : <Waves size={15} style={{ color: 'var(--accent)' }} />
+            ? <Sun size={15} className="block" style={{ color: 'var(--accent)' }} />
+            : <Waves size={15} className="block" style={{ color: 'var(--accent)' }} />
           }
         </button>
       </div>

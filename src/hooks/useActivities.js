@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 
-const TRIP_ID = 'holo-oahu-2025'
+const TRIP_ID = 'holo-oahu-2026'
 
 export function useActivities() {
   const [activities, setActivities] = useState([])

@@ -1,14 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Check } from 'lucide-react'
 import { useActivities } from '../hooks/useActivities'
 import ImageUploader from '../components/ImageUploader'
 import toast from 'react-hot-toast'
 
 const TYPES    = ['restaurant', 'attraction', 'beach', 'experience', 'other']
 const SEGMENTS = [{ id: 'hawaii', label: { zh: '夏威夷', en: 'Hawaii' } }, { id: 'seoul', label: { zh: '首爾', en: 'Seoul' } }]
-const TRANSPORT_MODES = ['none', 'car', 'bus', 'taxi', 'walk', 'shuttle']
+
+const TRIP_START = new Date('2026-07-18')
+const TRIP_DAYS = Array.from({ length: 9 }, (_, i) => {
+  const d = new Date(TRIP_START)
+  d.setDate(d.getDate() + i)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return { value: `2026-${mm}-${dd}`, label: `${mm}-${dd} 第${i + 1}天` }
+})
+const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = ['00', '15', '30', '45']
 
 const emptyForm = () => ({
   title:    { zh: '', en: '' },
@@ -21,6 +32,216 @@ const emptyForm = () => ({
   transportAfter: { mode: 'none', durationMin: '', note: { zh: '', en: '' } },
 })
 
+function CustomSelect({ value, onChange, options, placeholder = '—' }) {
+  const [open, setOpen] = useState(false)
+  const [dropPos, setDropPos] = useState({ top: 0, left: 0, width: 0 })
+  const [hoveredValue, setHoveredValue] = useState(null)
+  const triggerRef = useRef(null)
+  const selectedLabel = options.find(o => o.value === value)?.label ?? ''
+
+  const updateDropPos = () => {
+    if (!triggerRef.current) return
+    const r = triggerRef.current.getBoundingClientRect()
+    setDropPos({ top: r.bottom + 6, left: r.left, width: r.width })
+  }
+
+  useEffect(() => {
+    function onDown(e) {
+      if (!triggerRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    updateDropPos()
+    window.addEventListener('scroll', updateDropPos, true)
+    window.addEventListener('resize', updateDropPos)
+    return () => {
+      window.removeEventListener('scroll', updateDropPos, true)
+      window.removeEventListener('resize', updateDropPos)
+    }
+  }, [open])
+
+  function handleOpen() {
+    if (!open) updateDropPos()
+    setOpen(v => !v)
+  }
+
+  const panel = open ? (
+    <div
+      style={{
+        position: 'fixed',
+        top: dropPos.top,
+        left: dropPos.left,
+        width: dropPos.width,
+        zIndex: 9999,
+        background: 'var(--glass-bg)',
+        border: '0.5px solid var(--glass-border)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: 12,
+        boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+        overflow: 'hidden',
+      }}
+    >
+      <div style={{ maxHeight: 224, overflowY: 'auto', padding: '4px 0' }}>
+        {options.map(o => {
+          const isSelected = o.value === value
+          const isHovered  = o.value === hoveredValue
+          return (
+            <button
+              key={o.value}
+              type="button"
+              onMouseDown={() => { onChange(o.value); setOpen(false) }}
+              onMouseEnter={() => setHoveredValue(o.value)}
+              onMouseLeave={() => setHoveredValue(null)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm text-left"
+              style={{
+                background: isSelected
+                  ? 'color-mix(in srgb, var(--accent) 15%, transparent)'
+                  : isHovered
+                  ? 'color-mix(in srgb, var(--accent) 8%, transparent)'
+                  : 'transparent',
+                color: isSelected ? 'var(--accent)' : 'var(--text-primary)',
+                fontWeight: isSelected ? 500 : 400,
+              }}
+            >
+              <span>{o.label}</span>
+              {isSelected && <Check size={13} strokeWidth={2} style={{ color: 'var(--accent)' }} />}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  ) : null
+
+  return (
+    <>
+      <div ref={triggerRef}>
+        <button
+          type="button"
+          onClick={handleOpen}
+          className="w-full glass-mini flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-left"
+          style={{
+            background: 'var(--mini-bg)',
+            border: open ? '0.5px solid var(--accent)' : '0.5px solid var(--mini-border)',
+            color: selectedLabel ? 'var(--text-primary)' : 'var(--text-secondary)',
+            boxShadow: open ? '0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent)' : 'none',
+          }}
+        >
+          <span>{selectedLabel || placeholder}</span>
+          <ChevronDown size={14} strokeWidth={1.5} style={{ color: 'var(--text-secondary)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </button>
+      </div>
+      {panel && createPortal(panel, document.body)}
+    </>
+  )
+}
+
+function SelectField({ label, value, onChange, options, placeholder }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-secondary text-sm">{label}</label>
+      <CustomSelect value={value} onChange={onChange} options={options} placeholder={placeholder} />
+    </div>
+  )
+}
+
+function TimeSelect({ label, value, onChange }) {
+  const [h, m] = value ? value.split(':') : ['', '']
+  const setH = v => onChange(v ? `${v}:${m || '00'}` : '')
+  const setM = v => onChange(v ? `${h || '00'}:${v}` : '')
+  return (
+    <div className="space-y-1">
+      <label className="text-secondary text-sm">{label}</label>
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <CustomSelect value={h || ''} onChange={setH} options={HOURS.map(v => ({ value: v, label: `${v} 時` }))} placeholder="時" />
+        </div>
+        <span className="text-secondary font-medium">:</span>
+        <div className="flex-1">
+          <CustomSelect value={m || ''} onChange={setM} options={MINUTES.map(v => ({ value: v, label: `${v} 分` }))} placeholder="分" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AdvancedToggle({ children }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between py-1"
+      >
+        <span className="text-secondary text-sm">進階設定</span>
+        {/* toggle pill */}
+        <div style={{
+          width: 40, height: 22, borderRadius: 99, padding: 2, transition: 'background 0.2s',
+          background: open ? 'var(--accent)' : 'var(--mini-border)',
+          display: 'flex', alignItems: 'center',
+          justifyContent: open ? 'flex-end' : 'flex-start',
+        }}>
+          <div style={{ width: 18, height: 18, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+        </div>
+      </button>
+      {open && <div className="mt-3 space-y-3">{children}</div>}
+    </div>
+  )
+}
+
+function InputField({ label, value, onChange, type = 'text', placeholder }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-secondary text-sm">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full glass-mini px-3 py-2.5 text-primary text-base outline-none rounded-xl"
+        style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
+      />
+    </div>
+  )
+}
+
+function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZhChange, onEnChange, type = 'text', placeholder }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <label className="text-secondary text-sm">{label}</label>
+        <div className="flex items-center gap-1">
+          {['zh', 'en'].map(l => (
+            <button
+              key={l}
+              onClick={() => setInputLang(l)}
+              className="px-2.5 py-0.5 rounded-md text-xs font-medium transition-colors"
+              style={{
+                background: inputLang === l ? 'var(--accent)' : 'var(--mini-bg)',
+                color:      inputLang === l ? 'white'         : 'var(--text-secondary)',
+                border:     `0.5px solid ${inputLang === l ? 'var(--accent)' : 'var(--mini-border)'}`,
+              }}
+            >{l === 'zh' ? '中' : 'EN'}</button>
+          ))}
+        </div>
+      </div>
+      <input
+        type={type}
+        value={inputLang === 'zh' ? zhValue : enValue}
+        onChange={e => inputLang === 'zh' ? onZhChange(e.target.value) : onEnChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full glass-mini px-3 py-2.5 text-primary text-base outline-none rounded-xl"
+        style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
+      />
+    </div>
+  )
+}
+
 export default function ActivityFormPage() {
   const { t, i18n } = useTranslation()
   const navigate    = useNavigate()
@@ -28,6 +249,7 @@ export default function ActivityFormPage() {
   const isNew       = !id || id === 'new'
   const { activities, addActivity, updateActivity } = useActivities()
   const [form, setForm] = useState(emptyForm())
+  const [inputLang, setInputLang] = useState('zh')
   const lang = i18n.language
 
   useEffect(() => {
@@ -71,20 +293,6 @@ export default function ActivityFormPage() {
     } catch { toast.error('儲存失敗') }
   }
 
-  const InputField = ({ label, value, onChange, type = 'text', placeholder }) => (
-    <div className="space-y-1">
-      <label className="text-secondary text-sm">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full glass-mini px-3 py-2.5 text-primary text-base outline-none rounded-xl"
-        style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
-      />
-    </div>
-  )
-
   return (
     <div className="px-4 pb-24">
       <div className="flex items-center gap-3 py-4">
@@ -98,12 +306,24 @@ export default function ActivityFormPage() {
 
       <div className="space-y-4">
         <div className="glass-card p-4 space-y-3">
-          <InputField label={t('activities.fields.titleZh')}    value={form.title.zh}    onChange={v => set('title.zh', v)} />
-          <InputField label={t('activities.fields.titleEn')}    value={form.title.en}    onChange={v => set('title.en', v)} />
-          <InputField label={t('activities.fields.locationZh')} value={form.location.zh} onChange={v => set('location.zh', v)} />
-          <InputField label={t('activities.fields.locationEn')} value={form.location.en} onChange={v => set('location.en', v)} />
-          <InputField label={t('activities.fields.addressZh')}  value={form.address.zh}  onChange={v => set('address.zh', v)} />
-          <InputField label={t('activities.fields.addressEn')}  value={form.address.en}  onChange={v => set('address.en', v)} />
+          <BilingualField
+            label={lang === 'zh-TW' ? '標題' : 'Title'}
+            inputLang={inputLang} setInputLang={setInputLang}
+            zhValue={form.title.zh} enValue={form.title.en}
+            onZhChange={v => set('title.zh', v)} onEnChange={v => set('title.en', v)}
+          />
+          <BilingualField
+            label={lang === 'zh-TW' ? '地點' : 'Location'}
+            inputLang={inputLang} setInputLang={setInputLang}
+            zhValue={form.location.zh} enValue={form.location.en}
+            onZhChange={v => set('location.zh', v)} onEnChange={v => set('location.en', v)}
+          />
+          <BilingualField
+            label={lang === 'zh-TW' ? '地址' : 'Address'}
+            inputLang={inputLang} setInputLang={setInputLang}
+            zhValue={form.address.zh} enValue={form.address.en}
+            onZhChange={v => set('address.zh', v)} onEnChange={v => set('address.en', v)}
+          />
         </div>
 
         <div className="glass-card p-4 space-y-3">
@@ -128,7 +348,7 @@ export default function ActivityFormPage() {
 
           {/* Segment */}
           <div className="space-y-1">
-            <label className="text-secondary text-sm">段落</label>
+            <label className="text-secondary text-sm">國家</label>
             <div className="flex gap-2">
               {SEGMENTS.map(seg => (
                 <button
@@ -145,46 +365,28 @@ export default function ActivityFormPage() {
             </div>
           </div>
 
-          <InputField label={t('activities.fields.date')}      placeholder="YYYY-MM-DD" value={form.date}      onChange={v => set('date', v)} />
-          <InputField label={t('activities.fields.startTime')} placeholder="HH:mm"     value={form.startTime} onChange={v => set('startTime', v)} />
-          <InputField label={t('activities.fields.endTime')}   placeholder="HH:mm"     value={form.endTime}   onChange={v => set('endTime', v)} />
+          <SelectField
+            label={t('activities.fields.date')}
+            value={form.date}
+            onChange={v => set('date', v)}
+            options={TRIP_DAYS}
+          />
+          <TimeSelect label={t('activities.fields.startTime')} value={form.startTime} onChange={v => set('startTime', v)} />
+          <TimeSelect label={t('activities.fields.endTime')}   value={form.endTime}   onChange={v => set('endTime', v)} />
         </div>
 
         <div className="glass-card p-4 space-y-3">
-          <InputField label={t('activities.fields.noteZh')} value={form.note.zh} onChange={v => set('note.zh', v)} />
-          <InputField label={t('activities.fields.noteEn')} value={form.note.en} onChange={v => set('note.en', v)} />
-          <InputField label={t('activities.fields.lat')}     value={form.lat}     onChange={v => set('lat', v)}     type="number" />
-          <InputField label={t('activities.fields.lng')}     value={form.lng}     onChange={v => set('lng', v)}     type="number" />
-          <InputField label={t('activities.fields.mapLink')} value={form.mapLink} onChange={v => set('mapLink', v)} />
-        </div>
-
-        {/* Transport */}
-        <div className="glass-card p-4 space-y-3">
-          <p className="text-primary font-medium">{t('activities.transport.title')}</p>
-          <div className="flex flex-wrap gap-2">
-            {TRANSPORT_MODES.map(mode => (
-              <button key={mode} onClick={() => set('transportAfter.mode', mode)}
-                className="px-3 py-1.5 rounded-full text-sm border"
-                style={{
-                  background: form.transportAfter.mode === mode ? 'var(--accent)' : 'var(--mini-bg)',
-                  color:      form.transportAfter.mode === mode ? 'white'         : 'var(--text-secondary)',
-                  borderColor: form.transportAfter.mode === mode ? 'var(--accent)' : 'var(--mini-border)',
-                }}
-              >{t(`activities.transport.mode.${mode}`)}</button>
-            ))}
-          </div>
-          {form.transportAfter.mode !== 'none' && (
-            <>
-              <InputField
-                label={`${t('activities.transport.title')} (${t('activities.transport.duration')})`}
-                type="number"
-                value={form.transportAfter.durationMin}
-                onChange={v => set('transportAfter.durationMin', v)}
-              />
-              <InputField label={t('activities.transport.noteZh')} value={form.transportAfter.note.zh} onChange={v => set('transportAfter.note.zh', v)} />
-              <InputField label={t('activities.transport.noteEn')} value={form.transportAfter.note.en} onChange={v => set('transportAfter.note.en', v)} />
-            </>
-          )}
+          <BilingualField
+            label={lang === 'zh-TW' ? '備註' : 'Note'}
+            inputLang={inputLang} setInputLang={setInputLang}
+            zhValue={form.note.zh} enValue={form.note.en}
+            onZhChange={v => set('note.zh', v)} onEnChange={v => set('note.en', v)}
+          />
+          <AdvancedToggle>
+            <InputField label={t('activities.fields.lat')}     value={form.lat}     onChange={v => set('lat', v)}     type="number" />
+            <InputField label={t('activities.fields.lng')}     value={form.lng}     onChange={v => set('lng', v)}     type="number" />
+            <InputField label={t('activities.fields.mapLink')} value={form.mapLink} onChange={v => set('mapLink', v)} />
+          </AdvancedToggle>
         </div>
 
         {/* Images */}
@@ -193,7 +395,7 @@ export default function ActivityFormPage() {
           <ImageUploader
             images={form.images}
             onChange={urls => set('images', urls)}
-            storagePath={`trips/holo-oahu-2025/activities/${id || 'new'}`}
+            storagePath={`trips/holo-oahu-2026/activities/${id || 'new'}`}
           />
         </div>
 

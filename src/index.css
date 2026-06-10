@@ -14,6 +14,8 @@
   --accent:      #c47a5a;
   --text-primary:   #5c3d2e;
   --text-secondary: #8b6355;
+  --color-skeleton: rgba(196,122,90,0.15);
+  --color-border:   rgba(255,220,200,0.6);
 }
 
 [data-theme="blue"] {
@@ -27,6 +29,8 @@
   --accent:      #2a7a9b;
   --text-primary:   #1e3d4f;
   --text-secondary: #3d6478;
+  --color-skeleton: rgba(42,122,155,0.15);
+  --color-border:   rgba(180,220,240,0.6);
 }
 
 * {

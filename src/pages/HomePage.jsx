@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Cloud, Wind, Thermometer } from 'lucide-react'
 import { useTrip } from '../hooks/useTrip'
+import { Skeleton, WeatherSkeleton } from '../components/Skeleton'
 
 const CLOCKS = [
   { key: 'home.taiwan', tz: 'Asia/Taipei'       },
@@ -57,14 +58,14 @@ export default function HomePage() {
     return t(key, { defaultValue: String(code) })
   }
 
-  const tripStart = new Date('2025-07-18')
+  const tripStart = new Date('2026-07-18')
   const today     = new Date()
   today.setHours(0,0,0,0)
   tripStart.setHours(0,0,0,0)
   const daysLeft = Math.ceil((tripStart - today) / 86400000)
 
   return (
-    <div className="px-4 pb-24 space-y-4">
+    <div className="px-4 pt-4 pb-24 space-y-4">
       {/* Trip countdown */}
       <div className="glass-card p-4 text-center">
         <p className="text-secondary text-sm">{t('home.tripDates')}</p>
@@ -100,7 +101,7 @@ export default function HomePage() {
                 <p className="text-primary font-medium">{label}</p>
                 {w
                   ? <p className="text-secondary text-sm">{getWeatherDesc(w.weathercode)}</p>
-                  : <p className="text-secondary text-sm">{t('common.loading')}</p>
+                  : <Skeleton className="h-3 w-24 mt-1" />
                 }
               </div>
               {w && (

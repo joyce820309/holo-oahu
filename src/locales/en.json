@@ -14,7 +14,8 @@
     "more":      "More",
     "emergency": "Emergency",
     "members":   "Members",
-    "settings":  "Settings"
+    "settings":  "Settings",
+    "notifications": "Notifications"
   },
   "home": {
     "title":       "Trip Overview",
@@ -125,9 +126,18 @@
     }
   },
   "packing": {
-    "title":  "Packing List",
-    "new":    "Add Item",
-    "noData": "List is empty",
+    "title":          "Packing List",
+    "new":            "Add Item",
+    "noData":         "List is empty",
+    "addItem":        "+ Add Item",
+    "newCategory":    "New Category",
+    "editCategory":   "Edit Category",
+    "deleteCategory": "Delete Category",
+    "newItem":        "New Item",
+    "editItem":       "Edit Item",
+    "categoryName":   "Category Name",
+    "itemName":       "Item Name",
+    "selectCategory": "Category",
     "categories": {
       "clothing":    "Clothing",
       "documents":   "Documents",
@@ -189,6 +199,7 @@
     "copy":   "Copy Invite Link",
     "roles": {
       "owner":  "Owner",
+      "admin":  "Admin",
       "editor": "Editor",
       "viewer": "Viewer"
     }
@@ -199,6 +210,34 @@
     "theme":         "Theme",
     "notifications": "Push Notifications",
     "enablePush":    "Enable Push"
+  },
+  "notifications": {
+    "title": "Push Notifications",
+    "enable": "Enable Notifications",
+    "enabledDesc": "You'll receive real-time trip notifications",
+    "disabledDesc": "Turn on to receive trip reminders and updates",
+    "categories": "Notification Categories",
+    "unsupported": "Your browser does not support push notifications",
+    "denied": "Notification permission was blocked. Please enable it in browser settings.",
+    "cat": {
+      "tripReminder": "Trip Reminders",
+      "activityUpdate": "Activity Updates",
+      "flightAlert": "Flight Alerts",
+      "expenseUpdate": "Expense Updates",
+      "packingReminder": "Packing Reminders"
+    },
+    "reminder": {
+      "title": "Custom Reminders",
+      "add": "Add",
+      "new": "New Reminder",
+      "namePlaceholder": "e.g. Buy concert tickets",
+      "titleRequired": "Please enter a reminder name",
+      "timeRequired": "Please set a notification time",
+      "added": "Reminder added",
+      "error": "Operation failed",
+      "empty": "No custom reminders yet",
+      "past": "Expired"
+    }
   },
   "common": {
     "save":    "Save",

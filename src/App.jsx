@@ -7,26 +7,33 @@ import './lib/i18n'
 import Header         from './components/Header'
 import BottomNav      from './components/BottomNav'
 import OfflineBanner  from './components/OfflineBanner'
+import { ListSkeleton } from './components/Skeleton'
 
 import LoginPage        from './pages/LoginPage'
 import TripPage         from './pages/TripPage'
 import HomePage         from './pages/HomePage'
 import ActivitiesPage   from './pages/ActivitiesPage'
-import ActivityFormPage from './pages/ActivityFormPage'
+import ActivityFormPage    from './pages/ActivityFormPage'
+import ActivityDetailPage  from './pages/ActivityDetailPage'
+import TransportEditPage   from './pages/TransportEditPage'
 import FlightsPage      from './pages/FlightsPage'
 import HotelsPage       from './pages/HotelsPage'
+import HotelDetailPage  from './pages/HotelDetailPage'
 import PackingPage      from './pages/PackingPage'
 import ExpensesPage     from './pages/ExpensesPage'
 import EmergencyPage    from './pages/EmergencyPage'
 import MapPage          from './pages/MapPage'
 import MembersPage      from './pages/MembersPage'
 import SettingsPage     from './pages/SettingsPage'
+import NotificationsPage from './pages/NotificationsPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <p className="text-secondary">Loading...</p>
+    <div className="app-bg min-h-screen">
+      <div className="px-4 pt-16 pb-24">
+        <ListSkeleton count={4} />
+      </div>
     </div>
   )
   if (!user) return <Navigate to="/login" replace />
@@ -48,16 +55,20 @@ function AppShell() {
           <Route path="/trip" element={<ProtectedRoute><TripPage /></ProtectedRoute>}>
             <Route index                element={<HomePage />} />
             <Route path="activities"    element={<ActivitiesPage />} />
-            <Route path="activities/new" element={<ActivityFormPage />} />
-            <Route path="activities/:id" element={<ActivityFormPage />} />
+            <Route path="activities/new"               element={<ActivityFormPage />} />
+            <Route path="activities/:id"               element={<ActivityDetailPage />} />
+            <Route path="activities/:id/edit"          element={<ActivityFormPage />} />
+            <Route path="activities/:id/transport"     element={<TransportEditPage />} />
             <Route path="flights"       element={<FlightsPage />} />
             <Route path="hotels"        element={<HotelsPage />} />
+            <Route path="hotels/:id"    element={<HotelDetailPage />} />
           </Route>
           <Route path="/trip/packing"   element={<ProtectedRoute><PackingPage /></ProtectedRoute>} />
           <Route path="/trip/expenses"  element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
           <Route path="/trip/map"       element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
           <Route path="/trip/members"   element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
           <Route path="/trip/settings"  element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+          <Route path="/trip/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
         </Routes>
       </main>
       {user && <BottomNav />}

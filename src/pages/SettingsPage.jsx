@@ -78,7 +78,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="glass-mini p-4 text-center">
-        <p className="text-secondary text-xs">Holo v2.0 · Oahu Journey 2025</p>
+        <p className="text-secondary text-xs">Holo v2.0 · Oahu Journey 2026</p>
       </div>
     </div>
   )

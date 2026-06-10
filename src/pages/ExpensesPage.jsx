@@ -5,6 +5,7 @@ import { useExpenses } from '../hooks/useExpenses'
 import { useAuth } from '../contexts/AuthContext'
 import { useTrip } from '../hooks/useTrip'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { ListSkeleton } from '../components/Skeleton'
 import toast from 'react-hot-toast'
 
 const CATEGORIES = ['food', 'transport', 'accommodation', 'activity', 'shopping', 'other']
@@ -149,7 +150,7 @@ export default function ExpensesPage() {
 
       {(showForm || editId) && <ExpenseForm />}
 
-      {loading && <p className="text-secondary text-center py-8">{t('common.loading')}</p>}
+      {loading && <ListSkeleton count={3} />}
       {!loading && expenses.length === 0 && !showForm && (
         <p className="text-secondary text-center py-8">{t('expenses.noData')}</p>
       )}

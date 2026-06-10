@@ -1,14 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#e8d5c4"/>
-      <stop offset="100%" stop-color="#b8c8d8"/>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#87CEEB"/>
+      <stop offset="100%" stop-color="#e8d5c4"/>
     </linearGradient>
+    <linearGradient id="ocean" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4a9eba"/>
+      <stop offset="100%" stop-color="#2d6e8a"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD97D"/>
+      <stop offset="100%" stop-color="#FF9F1C"/>
+    </linearGradient>
+    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFD97D" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#FFD97D" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="32" height="32" rx="8" fill="url(#bg)"/>
-  <!-- sun -->
-  <circle cx="16" cy="11" r="4" fill="#c47a5a" opacity="0.9"/>
-  <!-- waves -->
-  <path d="M4 20 Q8 17 12 20 Q16 23 20 20 Q24 17 28 20" stroke="#c47a5a" stroke-width="2" fill="none" stroke-linecap="round"/>
-  <path d="M4 25 Q8 22 12 25 Q16 28 20 25 Q24 22 28 25" stroke="#c47a5a" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- Background rounded rect -->
+  <rect width="512" height="512" rx="96" fill="url(#sky)"/>
+
+  <!-- Ocean -->
+  <rect x="0" y="300" width="512" height="212" rx="0" fill="url(#ocean)"/>
+  <path d="M0 300 Q128 270 256 300 Q384 330 512 300 L512 512 L0 512 Z" fill="url(#ocean)"/>
+
+  <!-- Sun glow -->
+  <circle cx="256" cy="200" r="110" fill="url(#sunGlow)"/>
+
+  <!-- Sun -->
+  <circle cx="256" cy="200" r="72" fill="url(#sun)"/>
+
+  <!-- Wave 1 -->
+  <path d="M0 360 Q64 334 128 360 Q192 386 256 360 Q320 334 384 360 Q448 386 512 360"
+        stroke="white" stroke-width="14" fill="none" stroke-linecap="round" opacity="0.75"/>
+
+  <!-- Wave 2 -->
+  <path d="M0 410 Q64 384 128 410 Q192 436 256 410 Q320 384 384 410 Q448 436 512 410"
+        stroke="white" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Wave 3 -->
+  <path d="M0 455 Q64 434 128 455 Q192 476 256 455 Q320 434 384 455 Q448 476 512 455"
+        stroke="white" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.35"/>
+
+  <!-- Bottom rounded clip for ocean -->
+  <rect x="0" y="440" width="512" height="72" rx="0" fill="url(#ocean)"/>
+  <rect x="0" y="460" width="512" height="52" rx="48" fill="url(#ocean)"/>
 </svg>
