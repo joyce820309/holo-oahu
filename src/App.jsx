@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -42,14 +42,16 @@ function ProtectedRoute({ children }) {
 
 function AppShell() {
   const { user } = useAuth()
+  const location = useLocation()
+  const isLoginPage = location.pathname === '/login'
 
   return (
     <div className="app-bg">
-      {user && <Header />}
+      {user && !isLoginPage && <Header />}
       <OfflineBanner />
       <main style={{ maxWidth: '42rem', margin: '0 auto', width: '100%' }}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={user ? <Navigate to="/trip" replace /> : <LoginPage />} />
           <Route path="/emergency" element={<EmergencyPage />} />
           <Route path="/" element={<Navigate to="/trip" replace />} />
           <Route path="/trip" element={<ProtectedRoute><TripPage /></ProtectedRoute>}>
@@ -71,10 +73,15 @@ function AppShell() {
           <Route path="/trip/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
         </Routes>
       </main>
-      {user && <BottomNav />}
-      <Toaster position="top-center" toastOptions={{
-        style: { background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '0.5px solid var(--glass-border)', backdropFilter: 'blur(12px)' }
-      }} />
+      {user && !isLoginPage && <BottomNav />}
+      <Toaster
+        position="top-center"
+        containerStyle={{ top: 72 }}
+        toastOptions={{
+          style: { background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '0.5px solid var(--glass-border)', backdropFilter: 'blur(12px)' },
+          success: { iconTheme: { primary: 'var(--accent)', secondary: 'var(--glass-bg)' } },
+        }}
+      />
     </div>
   )
 }

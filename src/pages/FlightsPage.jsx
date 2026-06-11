@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Plus, Plane, ChevronDown, Check, Trash2, Pencil } from 'lucide-react'
 import { useFlights } from '../hooks/useFlights'
 import { useAuth } from '../contexts/AuthContext'
+import { syncFlightToActivities, deleteFlightActivities } from '../lib/syncFlightActivities'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ImageUploader from '../components/ImageUploader'
 import { FlightsSkeleton } from '../components/Skeleton'
@@ -313,8 +314,10 @@ export default function FlightsPage() {
       arriveAt: form.arriveDate && form.arriveTime ? `${form.arriveDate}T${form.arriveTime}` : form.arriveDate || '',
     }
     try {
+      let savedId = editId
       if (editId) { await updateFlight(editId, data); setEditId(null) }
-      else        { await addFlight(data); setShowForm(false) }
+      else        { const ref = await addFlight(data); savedId = ref.id; setShowForm(false) }
+      await syncFlightToActivities(savedId, data)
       toast.success('已儲存')
     } catch { toast.error('儲存失敗') }
   }
@@ -402,7 +405,11 @@ export default function FlightsPage() {
 
       {delId && (
         <ConfirmDialog
-          onConfirm={() => { deleteFlight(delId); setDelId(null) }}
+          onConfirm={async () => {
+            await deleteFlight(delId)
+            await deleteFlightActivities(delId)
+            setDelId(null)
+          }}
           onCancel={() => setDelId(null)}
         />
       )}

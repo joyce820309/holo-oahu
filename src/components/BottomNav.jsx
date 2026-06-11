@@ -17,8 +17,9 @@ const MORE_ITEMS = [
   { to: '/trip/settings',  icon: Settings,      key: 'nav.settings'  },
 ]
 
-// paths that belong to the "行程" tab
-const TRIP_PATHS = ['/trip', '/trip/activities', '/trip/flights', '/trip/hotels']
+const MORE_PATHS = MORE_ITEMS.map(i => i.to)
+// Paths that belong exclusively to their own NAV_ITEMS tab (not "行程")
+const OWN_NAV_PATHS = ['/trip/map', '/trip/packing', '/trip/expenses']
 
 export default function BottomNav() {
   const { t } = useTranslation()
@@ -26,8 +27,12 @@ export default function BottomNav() {
   const location = useLocation()
   const [showMore, setShowMore] = useState(false)
 
-  const isTripActive = TRIP_PATHS.some(p =>
-    location.pathname === p || location.pathname.startsWith(p + '/')
+  const p = location.pathname
+  const isMoreActive = MORE_PATHS.some(mp => p === mp || p.startsWith(mp + '/'))
+  const isOwnNavActive = OWN_NAV_PATHS.some(op => p === op || p.startsWith(op + '/'))
+
+  const isTripActive = !isMoreActive && !isOwnNavActive && (
+    p === '/trip' || p.startsWith('/trip/activities') || p.startsWith('/trip/flights') || p.startsWith('/trip/hotels')
   )
 
   return (
@@ -35,7 +40,8 @@ export default function BottomNav() {
       {showMore && (
         <div className="fixed inset-0 z-40" onClick={() => setShowMore(false)}>
           <div
-            className="glass-card absolute bottom-20 right-2 py-2 min-w-[160px]"
+            className="glass-card absolute right-2 py-2 min-w-[160px]"
+            style={{ bottom: 'calc(5.75rem)' }}
             onClick={e => e.stopPropagation()}
           >
             {MORE_ITEMS.map(({ to, icon: Icon, key }) => (
@@ -57,14 +63,17 @@ export default function BottomNav() {
         {NAV_ITEMS.map(({ to, icon: Icon, key, matchPrefix }) => {
           const isActive = matchPrefix
             ? isTripActive
-            : location.pathname === to || location.pathname.startsWith(to + '/')
+            : !isMoreActive && (location.pathname === to || location.pathname.startsWith(to + '/'))
 
           return (
             <button
               key={to}
               onClick={() => navigate(to)}
               className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-colors"
-              style={{ color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}
+              style={{
+                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                background: isActive ? 'var(--accent-subtle, rgba(var(--accent-rgb, 13 148 136) / 0.12))' : 'transparent',
+              }}
             >
               <Icon size={22} />
               <span className="text-xs">{t(key)}</span>
@@ -74,8 +83,11 @@ export default function BottomNav() {
 
         <button
           onClick={() => setShowMore(s => !s)}
-          className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl"
-          style={{ color: showMore ? 'var(--accent)' : 'var(--text-secondary)' }}
+          className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-colors"
+          style={{
+            color: (showMore || isMoreActive) ? 'var(--accent)' : 'var(--text-secondary)',
+            background: (showMore || isMoreActive) ? 'var(--accent-subtle, rgba(var(--accent-rgb, 13 148 136) / 0.12))' : 'transparent',
+          }}
         >
           {showMore ? <X size={22} /> : <MoreHorizontal size={22} />}
           <span className="text-xs">{t('nav.more')}</span>

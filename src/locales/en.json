@@ -241,6 +241,33 @@
       "past": "Expired"
     }
   },
+  "auth": {
+    "login": "Sign In",
+    "signup": "Sign Up",
+    "or": "or",
+    "email": "Email",
+    "password": "Password",
+    "displayNameOptional": "Display name (optional)",
+    "loginWithEmail": "Sign in with Email",
+    "signupWithEmail": "Create account with Email",
+    "forgotPassword": "Forgot password",
+    "success": {
+      "login": "Signed in",
+      "signup": "Account created",
+      "resetSent": "Password reset email sent"
+    },
+    "error": {
+      "missingFields": "Please enter your email and password",
+      "enterEmailFirst": "Enter your email first",
+      "emailInUse": "This email is already in use",
+      "invalidEmail": "Invalid email format",
+      "invalidCredential": "Incorrect email or password",
+      "weakPassword": "Password is too weak (min 6 characters)",
+      "tooManyRequests": "Too many attempts. Please try again later",
+      "userNotFound": "User not found",
+      "generic": "Authentication failed. Please try again"
+    }
+  },
   "common": {
     "save":    "Save",
     "cancel":  "Cancel",

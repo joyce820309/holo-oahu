@@ -241,6 +241,33 @@
       "past": "已過期"
     }
   },
+  "auth": {
+    "login": "登入",
+    "signup": "註冊",
+    "or": "或",
+    "email": "Email",
+    "password": "密碼",
+    "displayNameOptional": "暱稱（選填）",
+    "loginWithEmail": "使用 Email 登入",
+    "signupWithEmail": "使用 Email 註冊",
+    "forgotPassword": "忘記密碼",
+    "success": {
+      "login": "登入成功",
+      "signup": "註冊成功",
+      "resetSent": "已寄出重設密碼信"
+    },
+    "error": {
+      "missingFields": "請輸入 Email 與密碼",
+      "enterEmailFirst": "請先輸入 Email",
+      "emailInUse": "這個 Email 已被註冊",
+      "invalidEmail": "Email 格式不正確",
+      "invalidCredential": "帳號或密碼錯誤",
+      "weakPassword": "密碼強度不足（至少 6 碼）",
+      "tooManyRequests": "嘗試次數過多，請稍後再試",
+      "userNotFound": "找不到此帳號",
+      "generic": "登入失敗，請稍後再試"
+    }
+  },
   "common": {
     "save":    "儲存",
     "cancel":  "取消",

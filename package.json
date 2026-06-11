@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node scripts/generate-firebase-messaging-sw.mjs",
+    "prebuild": "node scripts/bump-version.mjs && node scripts/generate-firebase-messaging-sw.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
