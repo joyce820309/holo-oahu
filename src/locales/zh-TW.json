@@ -209,7 +209,9 @@
     "language": "語言",
     "theme":    "主題",
     "notifications": "推播通知",
-    "enablePush": "開啟推播"
+    "enablePush": "開啟推播",
+    "versionLabel": "版本",
+    "buildLabel": "建置時間"
   },
   "notifications": {
     "title": "推播通知",

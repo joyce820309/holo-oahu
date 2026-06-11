@@ -209,7 +209,9 @@
     "language":      "Language",
     "theme":         "Theme",
     "notifications": "Push Notifications",
-    "enablePush":    "Enable Push"
+    "enablePush":    "Enable Push",
+    "versionLabel":  "Version",
+    "buildLabel":    "Build Time"
   },
   "notifications": {
     "title": "Push Notifications",

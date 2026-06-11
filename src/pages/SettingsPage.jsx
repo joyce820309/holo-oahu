@@ -7,6 +7,13 @@ export default function SettingsPage() {
   const { t, i18n } = useTranslation()
   const { theme, setTheme } = useTheme()
   const { user, logout }    = useAuth()
+  const appVersion = import.meta.env.VITE_APP_VERSION || 'dev'
+  const buildTimeRaw = import.meta.env.VITE_APP_BUILD_TIME
+  const buildTime = buildTimeRaw
+    ? new Date(buildTimeRaw).toLocaleString(i18n.language === 'zh-TW' ? 'zh-TW' : 'en-US', {
+      hour12: false,
+    })
+    : '-'
 
   const changeLang = (lang) => {
     i18n.changeLanguage(lang)
@@ -77,8 +84,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="glass-mini p-4 text-center">
-        <p className="text-secondary text-xs">Holo v2.0 · Oahu Journey 2026</p>
+      <div className="glass-mini p-4 text-center space-y-1">
+        <p className="text-secondary text-xs">{t('settings.versionLabel')}: v{appVersion}</p>
+        <p className="text-secondary text-xs">{t('settings.buildLabel')}: {buildTime}</p>
       </div>
     </div>
   )
