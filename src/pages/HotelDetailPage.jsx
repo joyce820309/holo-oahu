@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, Copy, Hotel, MapPin, Phone } from 'lucide-react'
@@ -58,7 +58,7 @@ export default function HotelDetailPage() {
 
   if (loading) {
     return (
-      <div className="px-4 pb-24">
+      <div className="px-4 pb-36">
         <div className="py-4">
           <button onClick={() => navigate(-1)} className="btn-ghost p-2" style={{ minHeight: 44, minWidth: 44 }}>
             <ArrowLeft size={20} />
@@ -81,7 +81,7 @@ export default function HotelDetailPage() {
   const address = bi(hotel.address, lang)
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center gap-3 py-4">
         <button onClick={() => navigate(-1)} className="btn-ghost p-2" style={{ minHeight: 44, minWidth: 44 }}>
           <ArrowLeft size={20} />

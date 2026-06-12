@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { useExpenses } from '../hooks/useExpenses'
@@ -120,7 +120,7 @@ export default function ExpensesPage() {
   )
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('expenses.title')}</h2>
         <button className="btn-primary" onClick={() => { setShowForm(s => !s); setEditId(null) }}>
@@ -180,8 +180,8 @@ export default function ExpensesPage() {
                       </p>
                     )}
                   </div>
-                  <button className="text-secondary text-xs p-2" onClick={() => startEdit(exp)}>{t('common.edit')}</button>
-                  <button className="text-secondary text-xs p-2" onClick={() => setDelId(exp.id)}>{t('common.delete')}</button>
+                  <button className="text-secondary text-xs p-2" style={{ transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => startEdit(exp)}>{t('common.edit')}</button>
+                  <button className="text-xs p-2" style={{ color: '#e05555', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => setDelId(exp.id)}>{t('common.delete')}</button>
                 </div>
               </div>
             ))}

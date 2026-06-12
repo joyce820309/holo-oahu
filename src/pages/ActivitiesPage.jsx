@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+﻿import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
@@ -70,12 +70,15 @@ function CardMenu({ onView, onEdit, onDelete }) {
 
   useEffect(() => {
     if (!open) return
-    const close = e => {
-      if (!btnRef.current?.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    document.addEventListener('touchstart', close, { passive: true })
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('touchstart', close) }
+    // Delay attaching so the opening click doesn't immediately close the menu
+    const tid = setTimeout(() => {
+      const close = e => {
+        if (!btnRef.current?.contains(e.target)) setOpen(false)
+      }
+      document.addEventListener('click', close)
+      return () => document.removeEventListener('click', close)
+    }, 0)
+    return () => clearTimeout(tid)
   }, [open])
 
   const items = [
@@ -89,7 +92,9 @@ function CardMenu({ onView, onEdit, onDelete }) {
       <button
         ref={btnRef}
         onClick={openMenu}
-        style={{ padding: 6, color: 'var(--text-secondary)', minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, flexShrink: 0 }}
+        style={{ padding: 6, color: 'var(--text-secondary)', minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, flexShrink: 0, transition: 'opacity 0.15s' }}
+        onMouseEnter={e => e.currentTarget.style.opacity = '0.6'}
+        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
         aria-label="更多選項"
       >
         <EllipsisVertical size={16} />
@@ -113,7 +118,10 @@ function CardMenu({ onView, onEdit, onDelete }) {
                 width: '100%', display: 'flex', alignItems: 'center', gap: 10,
                 padding: '11px 14px', fontSize: 14, textAlign: 'left', background: 'none', border: 'none',
                 color: danger ? '#e05555' : 'var(--text-primary)', cursor: 'pointer',
+                transition: 'background 0.15s',
               }}
+              onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
               <Icon size={15} />{label}
             </button>
@@ -232,7 +240,13 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
           <Icon size={18} style={{ color: 'var(--accent)' }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-primary font-medium text-base leading-snug">{bi(activity.title, lang)}</p>
+          <p
+            className="text-primary font-medium text-base leading-snug"
+            style={!editMode && onView ? { cursor: 'pointer', transition: 'color 0.15s' } : {}}
+            onMouseEnter={e => { if (!editMode && onView) e.currentTarget.style.color = 'var(--accent)' }}
+            onMouseLeave={e => { if (!editMode && onView) e.currentTarget.style.color = '' }}
+            onClick={e => { if (!editMode && onView) { e.stopPropagation(); onView() } }}
+          >{bi(activity.title, lang)}</p>
           {bi(activity.location, lang) && <p className="text-secondary text-sm mt-0.5">{bi(activity.location, lang)}</p>}
           {activity.startTime && (
             <p className="text-secondary text-xs mt-1">
@@ -244,6 +258,48 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
         {!editMode && (
           <CardMenu onView={onView} onEdit={onEdit} onDelete={onDelete} />
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Flight group wrapper — dashed border box around all flight activities ──
+function FlightGroupBox({ children, landingTime }) {
+  return (
+    <div style={{ marginBottom: 12, position: 'relative' }}>
+      {/* Dashed border container */}
+      <div
+        style={{
+          border: '2px dashed color-mix(in srgb, var(--accent) 30%, transparent)',
+          borderRadius: 16,
+          padding: '10px 8px 8px',
+          background: 'color-mix(in srgb, var(--accent) 4%, transparent)',
+          position: 'relative',
+        }}
+      >
+        {/* Label tag at top-left */}
+        <div
+          style={{
+            position: 'absolute',
+            top: -11,
+            left: 12,
+            background: 'var(--bg-mid)',
+            padding: '0 8px',
+            fontSize: 11,
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <Plane size={11} style={{ color: 'var(--accent)' }} />
+          飛行中
+          {landingTime && (
+            <span style={{ color: 'var(--accent)', fontWeight: 500 }}>· 落地 {landingTime}</span>
+          )}
+        </div>
+        {children}
       </div>
     </div>
   )
@@ -266,6 +322,24 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
   const isTransit = segments.has('transit')
   const isReturn  = segments.has('return')
   const activeItem = activeId ? localItems.find(a => a.id === activeId) : null
+
+  // Items belong in the flight box if they have a flightId, or are transit/return segments
+  // on a day that has at least one actual flight
+  const dayHasFlight = localItems.some(a => a.flightId)
+  const isFlightBoxItem = a => a.flightId || (dayHasFlight && (a.segmentId === 'transit' || a.segmentId === 'return'))
+
+  const flightItems    = localItems.filter(a =>  isFlightBoxItem(a))
+    .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
+  const nonFlightItems = localItems.filter(a => !isFlightBoxItem(a))
+
+  // Landing time = endTime of the last crossday flight (e.g. "10:40" next morning)
+  const lastCrossDay = [...flightItems].reverse().find(a => a.flightId && a.endTime && a.endTime < a.startTime)
+  const landingTime  = lastCrossDay?.endTime ?? null
+
+  // On a flight day, ALL non-flight items render BELOW the flight box (postLandingItems).
+  // realItems (rendered above the box) is only non-empty on non-flight days.
+  const realItems        = dayHasFlight ? [] : nonFlightItems
+  const postLandingItems = dayHasFlight ? nonFlightItems : []
 
   function handleDragEnd(event) {
     const { active, over } = event
@@ -309,20 +383,20 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
           onDragCancel={() => setActiveId(null)}
         >
           <SortableContext items={localItems.map(a => a.id)} strategy={verticalListSortingStrategy}>
-            {localItems.map((activity, idx) => {
+            {/* Real activities — numbered, with timeline */}
+            {(editMode ? localItems : realItems).map((activity, idx) => {
               const transportSet = !!activity.transportAfter?.mode
               const hasTransport = transportSet && activity.transportAfter.mode !== 'none'
               const TransIcon    = hasTransport && TRANSPORT_ICONS[activity.transportAfter.mode]
-
-              const mapTarget = (activity.lat && activity.lng)
+              const mapTarget    = (activity.lat && activity.lng)
                 ? `${activity.lat},${activity.lng}`
                 : (bi(activity.address, lang) ? encodeURIComponent(bi(activity.address, lang)) : null)
-
-              const cardActions = {
+              const cardActions  = {
                 onView:   () => navigate(`/trip/activities/${activity.id}`),
                 onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
                 onDelete: () => setDelId(activity.id),
               }
+              const listForTransport = editMode ? localItems : realItems
 
               return (
                 <div key={activity.id}>
@@ -345,27 +419,19 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                       {editMode ? (
                         <SortableItem id={activity.id}>
                           {({ dragHandleProps }) => (
-                            <ActivityCard
-                              activity={activity} lang={lang}
-                              editMode={true} dragHandleProps={dragHandleProps}
-                              {...cardActions}
-                            />
+                            <ActivityCard activity={activity} lang={lang} editMode={true} dragHandleProps={dragHandleProps} {...cardActions} />
                           )}
                         </SortableItem>
                       ) : (
-                        <div onClick={() => navigate(`/trip/activities/${activity.id}`)}>
-                          <ActivityCard
-                            activity={activity} lang={lang}
-                            editMode={false}
-                            onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
-                            {...cardActions}
-                          />
-                        </div>
+                        <ActivityCard activity={activity} lang={lang} editMode={false}
+                          onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
+                          {...cardActions}
+                        />
                       )}
                     </div>
                   </div>
 
-                  {!editMode && idx < localItems.length - 1 && (
+                  {!editMode && idx < listForTransport.length - 1 && (
                     <div className="flex items-center gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
                       <div style={{ width: 40, flexShrink: 0 }} />
                       {hasTransport ? (
@@ -382,7 +448,140 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                             <EllipsisVertical size={15} />
                           </button>
                         </div>
-                      ) : !transportSet ? (
+                      ) : !hasTransport ? (
+                        <button
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
+                          style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
+                          onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
+                        >
+                          <Plus size={12} />設定交通
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Flight group box — shown only in normal mode when there are flight activities */}
+            {!editMode && flightItems.length > 0 && (
+              <FlightGroupBox landingTime={landingTime}>
+                {flightItems.map((activity, idx) => {
+                  const cardActions = {
+                    onView:   () => navigate(`/trip/activities/${activity.id}`),
+                    onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
+                    onDelete: () => setDelId(activity.id),
+                  }
+                  return (
+                    <div key={activity.id}>
+                      <div className="flex items-start gap-3 relative" style={{ zIndex: 1 }}>
+                        <div className="flex flex-col items-center flex-shrink-0" style={{ width: 40 }}>
+                          {activity.startTime && (
+                            <span className="text-secondary" style={{ fontSize: 10, lineHeight: 1.2, textAlign: 'center', marginTop: 4 }}>
+                              {activity.startTime}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <ActivityCard activity={activity} lang={lang} editMode={false} {...cardActions} />
+                        </div>
+                      </div>
+                      {idx < flightItems.length - 1 && <div style={{ height: 8 }} />}
+                    </div>
+                  )
+                })}
+              </FlightGroupBox>
+            )}
+
+            {/* Transport connector between flight box and first post-landing activity */}
+            {!editMode && flightItems.length > 0 && postLandingItems.length > 0 && (() => {
+              const lastFlight = flightItems[flightItems.length - 1]
+              const transportSet = !!lastFlight.transportAfter?.mode
+              const hasTransport = transportSet && lastFlight.transportAfter.mode !== 'none'
+              const TransIcon    = hasTransport && TRANSPORT_ICONS[lastFlight.transportAfter.mode]
+              return (
+                <div className="flex items-center gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
+                  <div style={{ width: 40, flexShrink: 0 }} />
+                  {hasTransport ? (
+                    <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                      style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}>
+                      {TransIcon && <TransIcon size={13} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />}
+                      <span className="text-secondary flex-1" style={{ fontSize: 12 }}>
+                        {t(`activities.transport.mode.${lastFlight.transportAfter.mode}`)}
+                        {lastFlight.transportAfter.durationMin > 0 && ` · ${lastFlight.transportAfter.durationMin} ${t('activities.transport.duration')}`}
+                        {bi(lastFlight.transportAfter.note, lang) && ` · ${bi(lastFlight.transportAfter.note, lang)}`}
+                      </span>
+                      <button onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${lastFlight.id}/transport`) }}
+                        style={{ color: 'var(--text-secondary)', padding: 4, flexShrink: 0 }}>
+                        <EllipsisVertical size={15} />
+                      </button>
+                    </div>
+                  ) : !transportSet ? (
+                    <button
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
+                      style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
+                      onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${lastFlight.id}/transport`) }}
+                    >
+                      <Plus size={12} />設定交通
+                    </button>
+                  ) : null}
+                </div>
+              )
+            })()}
+
+            {/* Post-landing activities — rendered after flight box, numbered continuing from realItems */}
+            {!editMode && postLandingItems.map((activity, idx) => {
+              const seqNum = realItems.length + idx + 1
+              const transportSet = !!activity.transportAfter?.mode
+              const hasTransport = transportSet && activity.transportAfter.mode !== 'none'
+              const TransIcon    = hasTransport && TRANSPORT_ICONS[activity.transportAfter.mode]
+              const mapTarget    = (activity.lat && activity.lng)
+                ? `${activity.lat},${activity.lng}`
+                : (bi(activity.address, lang) ? encodeURIComponent(bi(activity.address, lang)) : null)
+              const cardActions  = {
+                onView:   () => navigate(`/trip/activities/${activity.id}`),
+                onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
+                onDelete: () => setDelId(activity.id),
+              }
+              return (
+                <div key={activity.id}>
+                  <div className="flex items-start gap-3 relative" style={{ zIndex: 1 }}>
+                    <div className="flex flex-col items-center flex-shrink-0" style={{ width: 40 }}>
+                      <div className="flex items-center justify-center rounded-full text-white text-xs font-bold"
+                        style={{ width: 24, height: 24, background: 'var(--accent)', flexShrink: 0 }}>
+                        {seqNum}
+                      </div>
+                      {activity.startTime && (
+                        <span className="text-secondary mt-1" style={{ fontSize: 10, lineHeight: 1.2, textAlign: 'center' }}>
+                          {activity.startTime}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <ActivityCard activity={activity} lang={lang} editMode={false}
+                        onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
+                        {...cardActions}
+                      />
+                    </div>
+                  </div>
+                  {idx < postLandingItems.length - 1 && (
+                    <div className="flex items-center gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
+                      <div style={{ width: 40, flexShrink: 0 }} />
+                      {hasTransport ? (
+                        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                          style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}>
+                          {TransIcon && <TransIcon size={13} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />}
+                          <span className="text-secondary flex-1" style={{ fontSize: 12 }}>
+                            {t(`activities.transport.mode.${activity.transportAfter.mode}`)}
+                            {activity.transportAfter.durationMin > 0 && ` · ${activity.transportAfter.durationMin} ${t('activities.transport.duration')}`}
+                            {bi(activity.transportAfter.note, lang) && ` · ${bi(activity.transportAfter.note, lang)}`}
+                          </span>
+                          <button onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
+                            style={{ color: 'var(--text-secondary)', padding: 4, flexShrink: 0 }}>
+                            <EllipsisVertical size={15} />
+                          </button>
+                        </div>
+                      ) : !hasTransport ? (
                         <button
                           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
                           style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
@@ -531,11 +730,16 @@ export default function ActivitiesPage() {
   const navigate   = useNavigate()
   const [delId, setDelId]       = useState(null)
   const [editMode, setEditMode] = useState(false)
-  const [activeTab, setActiveTab] = useState(getInitialTab)
+  const [activeTab, setActiveTab] = useState(() => {
+    return sessionStorage.getItem('activities_tab') || getInitialTab()
+  })
   const lang = i18n.language
 
   const sorted = [...activities].sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date)
+    // Flight activities always sort after real activities within a day
+    const af = a.flightId ? 1 : 0, bf = b.flightId ? 1 : 0
+    if (af !== bf) return af - bf
     const oa = a.order ?? 9999, ob = b.order ?? 9999
     if (oa !== ob) return oa - ob
     return (a.startTime || '').localeCompare(b.startTime || '')
@@ -558,7 +762,7 @@ export default function ActivitiesPage() {
 
   return (
     <div
-      className="px-4 pb-24"
+      className="px-4 pb-36"
       style={editMode ? { userSelect: 'none', WebkitUserSelect: 'none' } : {}}
     >
       <div className="flex items-center justify-between py-4">
@@ -588,7 +792,7 @@ export default function ActivitiesPage() {
       )}
 
       {!loading && (
-        <DayTabs activeTab={activeTab} onChange={tab => { setActiveTab(tab); setEditMode(false) }} lang={lang} />
+        <DayTabs activeTab={activeTab} onChange={tab => { setActiveTab(tab); sessionStorage.setItem('activities_tab', tab); setEditMode(false) }} lang={lang} />
       )}
 
       {loading && <ActivitiesSkeleton />}

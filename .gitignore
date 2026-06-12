@@ -28,3 +28,5 @@ public/firebase-messaging-sw.js
 *.njsproj
 *.sln
 *.sw?
+
+.vercel

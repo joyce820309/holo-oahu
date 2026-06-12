@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Plane, ChevronDown, Check, Trash2, Pencil } from 'lucide-react'
@@ -337,7 +337,7 @@ export default function FlightsPage() {
   }
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('flights.title')}</h2>
         {canEditTravel && (
@@ -402,10 +402,10 @@ export default function FlightsPage() {
                   </div>
                   {canEditTravel && (
                     <div className="flex flex-col gap-1 flex-shrink-0">
-                      <button className="p-1.5 rounded-lg" style={{ color: 'var(--text-secondary)' }} onClick={() => { setEditId(f.id); setShowForm(false) }}>
+                      <button className="p-1.5 rounded-lg" style={{ color: 'var(--text-secondary)', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => { setEditId(f.id); setShowForm(false) }}>
                         <Pencil size={15} />
                       </button>
-                      <button className="p-1.5 rounded-lg" style={{ color: 'var(--text-secondary)' }} onClick={() => setDelId(f.id)}>
+                      <button className="p-1.5 rounded-lg" style={{ color: '#e05555', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => setDelId(f.id)}>
                         <Trash2 size={15} />
                       </button>
                     </div>

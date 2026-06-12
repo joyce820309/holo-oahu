@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -294,7 +294,7 @@ export default function HotelsPage() {
   }
 
   if (loading) return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('hotels.title')}</h2>
       </div>
@@ -303,7 +303,7 @@ export default function HotelsPage() {
   )
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('hotels.title')}</h2>
         {isAdmin && (
@@ -360,11 +360,11 @@ export default function HotelsPage() {
 
                     {isAdmin && (
                       <div className="flex flex-col gap-1 flex-shrink-0">
-                        <button className="p-1.5 rounded-lg" style={{ color: 'var(--text-secondary)' }}
+                        <button className="p-1.5 rounded-lg" style={{ color: 'var(--text-secondary)', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'}
                           onClick={e => { e.stopPropagation(); setEditId(h.id); setShowForm(false) }}>
                           <Pencil size={15} />
                         </button>
-                        <button className="p-1.5 rounded-lg" style={{ color: 'var(--text-secondary)' }}
+                        <button className="p-1.5 rounded-lg" style={{ color: '#e05555', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'}
                           onClick={e => { e.stopPropagation(); setDelId(h.id) }}>
                           <Trash2 size={15} />
                         </button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Cloud, Wind, Thermometer } from 'lucide-react'
 import { useTrip } from '../hooks/useTrip'
@@ -65,7 +65,7 @@ export default function HomePage() {
   const daysLeft = Math.ceil((tripStart - today) / 86400000)
 
   return (
-    <div className="px-4 pt-4 pb-24 space-y-4">
+    <div className="px-4 pt-4 pb-36 space-y-4">
       {/* Trip countdown */}
       <div className="glass-card p-4 text-center">
         <p className="text-secondary text-sm">{t('home.tripDates')}</p>

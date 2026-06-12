@@ -50,7 +50,9 @@ export default function BottomNav() {
                 key={to}
                 onClick={() => { navigate(to); setShowMore(false) }}
                 className="flex items-center gap-3 w-full px-4 py-3 text-left"
-                style={{ color: 'var(--text-primary)' }}
+                style={{ color: 'var(--text-primary)', transition: 'background 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <Icon size={20} />
                 <span className="text-base">{t(key)}</span>
@@ -59,6 +61,20 @@ export default function BottomNav() {
           </div>
         </div>
       )}
+
+      {/* upward fade mask above nav */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 76,
+          left: 0,
+          right: 0,
+          height: 72,
+          background: 'linear-gradient(to bottom, transparent, var(--bg-to))',
+          pointerEvents: 'none',
+          zIndex: 49,
+        }}
+      />
 
       <nav className="glass-mini fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-2 py-2 mx-2 mb-2">
         {NAV_ITEMS.map(({ to, icon: Icon, key, exact }) => {

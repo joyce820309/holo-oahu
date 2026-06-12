@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Car, Bus, Footprints, Truck, BanIcon } from 'lucide-react'
@@ -29,14 +29,14 @@ export default function TransportEditPage() {
 
   const activity = activities.find(a => a.id === id)
   const [form, setForm] = useState({
-    mode: 'none', durationMin: '', note: { zh: '', en: '' },
+    mode: '', durationMin: '', note: { zh: '', en: '' },
   })
   const [inputLang, setInputLang] = useState('zh')
 
   useEffect(() => {
     if (activity?.transportAfter) {
       setForm({
-        mode: activity.transportAfter.mode || 'none',
+        mode: activity.transportAfter.mode || '',
         durationMin: activity.transportAfter.durationMin || '',
         note: activity.transportAfter.note || { zh: '', en: '' },
       })
@@ -52,11 +52,9 @@ export default function TransportEditPage() {
   const submit = async () => {
     try {
       await updateActivity(id, {
-        transportAfter: {
-          mode: form.mode,
-          durationMin: form.durationMin ? parseInt(form.durationMin) : 0,
-          note: form.note,
-        },
+        transportAfter: form.mode
+          ? { mode: form.mode, durationMin: form.durationMin ? parseInt(form.durationMin) : 0, note: form.note }
+          : null,
       })
       toast.success('已儲存')
       navigate(-1)
@@ -64,7 +62,7 @@ export default function TransportEditPage() {
   }
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center gap-3 py-4">
         <button onClick={() => navigate(-1)} className="btn-ghost p-2" style={{ minHeight: 44, minWidth: 44 }}>
           <ArrowLeft size={20} />
@@ -88,7 +86,20 @@ export default function TransportEditPage() {
       <div className="space-y-4">
         {/* Mode selector */}
         <div className="glass-card p-4 space-y-3">
-          <label className="text-secondary text-sm">交通方式</label>
+          <div className="flex items-center justify-between">
+            <label className="text-secondary text-sm">交通方式</label>
+            {form.mode && form.mode !== '' && (
+              <button
+                onClick={() => setForm(f => ({ ...f, mode: '' }))}
+                className="text-xs"
+                style={{ color: 'var(--text-secondary)', transition: 'opacity 0.15s' }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.5'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                清除選擇
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {MODES.map(({ id: modeId, labelZh, labelEn, Icon }) => {
               const active = form.mode === modeId
@@ -110,6 +121,9 @@ export default function TransportEditPage() {
               )
             })}
           </div>
+          {!form.mode && (
+            <p className="text-secondary text-xs text-center pt-1">選「無」可隱藏此段交通，不選則顯示「設定交通」提示</p>
+          )}
         </div>
 
         {/* Duration + note — only when mode is set */}

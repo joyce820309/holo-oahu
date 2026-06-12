@@ -1,4 +1,4 @@
-export function Skeleton({ className = '' }) {
+﻿export function Skeleton({ className = '' }) {
   return <div className={`animate-pulse bg-[var(--color-skeleton)] rounded ${className}`} />
 }
 
@@ -135,7 +135,7 @@ export function HotelsSkeleton({ count = 2 }) {
 
 export function ActivityDetailSkeleton() {
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center justify-between py-4">
         <Skeleton className="h-11 w-11 rounded-xl" />
         <Skeleton className="h-11 w-20 rounded-xl" />

@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+﻿import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Pencil, UtensilsCrossed, Ticket, Waves, Star, MapPin, Copy, Map, Navigation, Car, Bus, Footprints, Truck, Check } from 'lucide-react'
 import { useState } from 'react'
@@ -59,7 +59,7 @@ export default function ActivityDetailPage() {
   }
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center justify-between py-4">
         <button onClick={() => navigate(-1)} className="btn-ghost p-2" style={{ minHeight: 44, minWidth: 44 }}>
           <ArrowLeft size={20} />

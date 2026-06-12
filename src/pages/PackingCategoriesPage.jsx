@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, FolderPlus, Pencil, Trash2, X } from 'lucide-react'
@@ -95,7 +95,7 @@ export default function PackingCategoriesPage() {
   }
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="flex items-center justify-between py-4">
         <div className="flex items-center gap-2">
           <button className="p-2 rounded-xl text-secondary" onClick={() => navigate('/trip/packing')}>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+﻿import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Bell, BellOff, Plane, UtensilsCrossed, Wallet, Package, CalendarDays, Info, Plus, Trash2, Clock, X, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { useNotifications } from '../hooks/useNotifications'
@@ -287,7 +287,7 @@ export default function NotificationsPage() {
 
   if (loading) {
     return (
-      <div className="px-4 pb-24">
+      <div className="px-4 pb-36">
         <h2 className="text-primary font-medium text-xl py-4">{t('notifications.title')}</h2>
         <div className="glass-card p-4 space-y-4">
           <div className="flex items-center justify-between">
@@ -309,7 +309,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <h2 className="text-primary font-medium text-xl py-4">{t('notifications.title')}</h2>
 
       {/* Unsupported / Denied banner */}

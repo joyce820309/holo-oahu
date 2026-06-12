@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+﻿import { useTranslation } from 'react-i18next'
 import { doc, setDoc } from 'firebase/firestore'
 import { UserMinus, Crown, ShieldCheck, Users } from 'lucide-react'
 import { useTrip } from '../hooks/useTrip'
@@ -75,7 +75,7 @@ export default function MembersPage() {
   const members = trip?.members || []
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <h2 className="text-primary font-medium text-xl py-4">{t('members.title')}</h2>
 
       <div className="glass-card divide-y" style={{ borderColor: 'var(--glass-border)' }}>
@@ -114,7 +114,9 @@ export default function MembersPage() {
                   </select>
                   <button
                     className="text-secondary p-2"
-                    style={{ minHeight: 44 }}
+                    style={{ minHeight: 44, transition: 'opacity 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.5'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                     onClick={() => removeMember(member.uid)}
                   >
                     <UserMinus size={16} />

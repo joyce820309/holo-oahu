@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Phone, Plus, Trash2 } from 'lucide-react'
 import { useEmergencyContacts } from '../hooks/useEmergencyContacts'
@@ -61,7 +61,7 @@ export default function EmergencyPage() {
   )
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <h2 className="text-primary font-medium text-xl py-4">{t('emergency.title')}</h2>
 
       {sections.map(({ key, titleKey }) => (
@@ -123,10 +123,11 @@ export default function EmergencyPage() {
                 </div>
                 <div className="flex gap-2">
                   <a href={`tel:${c.phone.replace(/[^+\d]/g, '')}`}
-                    className="text-accent p-2" style={{ minHeight: 44 }}>
+                    className="text-accent p-2" style={{ minHeight: 44, transition: 'opacity 0.15s' }}
+                    onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
                     <Phone size={16} />
                   </a>
-                  <button className="text-secondary p-2" onClick={() => deleteContact(c.id)} style={{ minHeight: 44 }}>
+                  <button className="p-2" style={{ color: '#e05555', minHeight: 44, transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => deleteContact(c.id)}>
                     <Trash2 size={16} />
                   </button>
                 </div>

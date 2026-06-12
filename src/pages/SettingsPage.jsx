@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -49,7 +49,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <h2 className="text-primary font-medium text-xl py-4">{t('settings.title')}</h2>
 
       {/* User info */}
@@ -93,7 +93,7 @@ export default function SettingsPage() {
             ) : (
               <div className="flex items-center gap-1.5 mb-0.5">
                 <p className="text-primary font-medium truncate">{user.displayName || '（未設定）'}</p>
-                <button onClick={startEdit} className="text-secondary shrink-0" aria-label="編輯暱稱">
+                <button onClick={startEdit} className="text-secondary shrink-0" aria-label="編輯暱稱" style={{ transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
                   <Pencil size={14} />
                 </button>
               </div>

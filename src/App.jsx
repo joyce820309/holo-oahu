@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+﻿import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -33,7 +33,7 @@ function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return (
     <div className="app-bg min-h-screen">
-      <div className="px-4 pt-16 pb-24">
+      <div className="px-4 pt-16 pb-36">
         <ListSkeleton count={4} />
       </div>
     </div>

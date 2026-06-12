@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, PackagePlus, Pencil, Settings2, Square, Trash2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -128,8 +128,8 @@ function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
         </button>
         {canEdit && (
           <div className="hidden md:flex gap-1 ml-2">
-            <button className="text-secondary p-1.5 rounded-lg" onClick={onEdit}><Pencil size={14} /></button>
-            <button className="text-secondary p-1.5 rounded-lg" onClick={onDelete}><Trash2 size={14} /></button>
+            <button className="text-secondary p-1.5 rounded-lg" style={{ transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={onEdit}><Pencil size={14} /></button>
+            <button className="p-1.5 rounded-lg" style={{ color: '#e05555', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={onDelete}><Trash2 size={14} /></button>
           </div>
         )}
       </div>
@@ -229,14 +229,14 @@ export default function PackingPage() {
   }
 
   if (loading) return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       <div className="py-4"><h2 className="text-primary font-medium text-xl">{t('packing.title')}</h2></div>
       <PackingSkeleton />
     </div>
   )
 
   return (
-    <div className="px-4 pb-24">
+    <div className="px-4 pb-36">
       {/* Header */}
       <div className="flex items-center justify-between py-4">
         <div>
