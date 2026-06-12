@@ -114,7 +114,7 @@ export function AuthProvider({ children }) {
   const isOwner        = role === 'owner'
   const isAdmin        = role === 'owner' || role === 'admin'
   const canManageMembers = isOwner
-  const canEditTravel  = isAdmin
+  const canEditTravel  = role === 'owner' || role === 'admin' || role === 'editor'
   const canEditGeneral = role === 'owner' || role === 'admin' || role === 'editor'
 
   return (

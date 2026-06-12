@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { CalendarDays, Luggage, Package, Wallet, MoreHorizontal, AlertTriangle, Users, Settings, Bell, Map, X } from 'lucide-react'
+import { House, CalendarDays, Luggage, Package, Wallet, MoreHorizontal, AlertTriangle, Users, Settings, Bell, Map, X } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { to: '/trip',            icon: CalendarDays, key: 'nav.trip',       exact: true },
+  { to: '/trip',            icon: House,        key: 'nav.trip',       exact: true },
   { to: '/trip/activities', icon: CalendarDays, key: 'nav.activities'              },
   { to: '/trip/travel',     icon: Luggage,      key: 'nav.travel'                  },
   { to: '/trip/packing',    icon: Package,      key: 'nav.packing'                 },
