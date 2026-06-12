@@ -10,7 +10,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, runTransaction } from 'firebase/firestore'
 import { auth, provider, db } from '../lib/firebase'
 
 const OWNER_EMAIL  = 'joyce820309@gmail.com'
@@ -33,14 +33,29 @@ function fixedRoleForEmail(email) {
 
 async function syncTripMember(u, role) {
   const tripRef = doc(db, 'trips', TRIP_ID)
-  const snap    = await getDoc(tripRef)
-  if (!snap.exists()) return
-  const members  = snap.data().members || []
-  const existing = members.find(m => m.uid === u.uid)
-  const next     = { uid: u.uid, displayName: u.displayName, email: u.email, photoURL: u.photoURL, role, joinedAt: existing?.joinedAt || new Date().toISOString() }
-  await updateDoc(tripRef, {
-    members: existing ? members.map(m => m.uid === u.uid ? { ...m, ...next } : m) : [...members, next],
-  })
+  try {
+    await runTransaction(db, async tx => {
+      const snap = tx.get(tripRef)
+      const resolved = await snap
+      if (!resolved.exists()) return
+      const members  = resolved.data().members || []
+      const existing = members.find(m => m.uid === u.uid)
+      const member   = {
+        uid:         u.uid,
+        displayName: u.displayName || '',
+        email:       u.email || '',
+        photoURL:    u.photoURL || null,
+        role,
+        joinedAt:    existing?.joinedAt || new Date().toISOString(),
+      }
+      const next = existing
+        ? members.map(m => m.uid === u.uid ? member : m)
+        : [...members, member]
+      tx.update(tripRef, { members: next })
+    })
+  } catch (e) {
+    console.error('[syncTripMember] failed:', e.code, e.message)
+  }
 }
 
 async function resolveRole(u) {
@@ -104,8 +119,11 @@ export function AuthProvider({ children }) {
     if (name?.trim()) {
       await updateProfile(result.user, { displayName: name.trim() })
     }
-    // updateProfile doesn't re-fire onAuthStateChanged, so sync Firestore manually
-    await resolveRole(result.user)
+    // updateProfile doesn't re-fire onAuthStateChanged.
+    // Manually sync Firestore and update context so the UI reflects displayName immediately.
+    const r = await resolveRole(result.user)
+    setUser({ ...result.user, displayName: result.user.displayName })
+    setRole(r)
     return result
   }
   const resetPassword = (email) => sendPasswordResetEmail(auth, email)

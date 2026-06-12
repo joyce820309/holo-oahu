@@ -30,9 +30,11 @@ export function useExpenses() {
       setRates(JSON.parse(cached))
       return
     }
-    fetch('https://api.frankfurter.app/latest?from=USD&to=TWD,KRW')
+    // open.er-api.com supports CORS from browsers; frankfurter.app does not
+    fetch('https://open.er-api.com/v6/latest/USD')
       .then(r => r.json())
       .then(data => {
+        if (data.result !== 'success') return
         const r = { USD: 1, TWD: data.rates.TWD, KRW: data.rates.KRW }
         setRates(r)
         localStorage.setItem(RATES_KEY, JSON.stringify(r))

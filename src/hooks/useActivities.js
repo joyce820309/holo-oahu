@@ -19,7 +19,10 @@ export function useActivities() {
     const unsub = onSnapshot(q, snap => {
       setActivities(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
-    }, () => setLoading(false))
+    }, err => {
+      console.error('[useActivities] onSnapshot error:', err.code, err.message)
+      setLoading(false)
+    })
     return unsub
   }, [])
 

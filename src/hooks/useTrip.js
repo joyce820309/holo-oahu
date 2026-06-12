@@ -14,7 +14,10 @@ export function useTrip() {
       if (snap.exists()) setTrip({ id: snap.id, ...snap.data() })
       else setTrip(null)
       setLoading(false)
-    }, () => setLoading(false))
+    }, err => {
+      console.error('[useTrip] onSnapshot error:', err.code, err.message)
+      setLoading(false)
+    })
     return unsub
   }, [])
 
