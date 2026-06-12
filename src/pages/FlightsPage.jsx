@@ -21,7 +21,7 @@ const TRIP_DAYS  = Array.from({ length: 9 }, (_, i) => {
   return { value: `2026-${mm}-${dd}`, label: `${mm}-${dd} 第${i + 1}天` }
 })
 const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
-const MINUTES = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55']
+const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
 
 function CustomSelect({ value, onChange, options, placeholder = '—' }) {
   const [open, setOpen]           = useState(false)
@@ -322,11 +322,18 @@ export default function FlightsPage() {
     } catch { toast.error('儲存失敗') }
   }
 
+  const handleSyncAll = async () => {
+    try {
+      await Promise.all(flights.map(f => syncFlightToActivities(f.id, f)))
+      toast.success(`已同步 ${flights.length} 筆機票`)
+    } catch { toast.error('同步失敗') }
+  }
+
   const fmtDT = (dt) => {
     if (!dt) return '—'
     const d = new Date(dt)
     if (isNaN(d)) return dt
-    return d.toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return d.toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
   }
 
   return (
@@ -334,9 +341,16 @@ export default function FlightsPage() {
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('flights.title')}</h2>
         {canEditTravel && (
-          <button className="btn-primary" onClick={() => { setShowForm(s => !s); setEditId(null) }}>
-            <Plus size={18} />{t('flights.new')}
-          </button>
+          <div className="flex items-center gap-2">
+            {flights.length > 0 && (
+              <button className="btn-ghost text-sm" onClick={handleSyncAll}>
+                同步行程
+              </button>
+            )}
+            <button className="btn-primary" onClick={() => { setShowForm(s => !s); setEditId(null) }}>
+              <Plus size={18} />{t('flights.new')}
+            </button>
+          </div>
         )}
       </div>
 

@@ -7,14 +7,17 @@
     "blue": "Hanalei Blue"
   },
   "nav": {
-    "trip":      "行程",
-    "map":       "地圖",
-    "packing":   "打包",
-    "expenses":  "費用",
-    "more":      "更多",
-    "emergency": "緊急",
-    "members":   "成員",
-    "settings":  "設定",
+    "trip":          "總覽",
+    "activities":    "行程",
+    "flights":       "機票",
+    "travel":        "旅遊",
+    "map":           "地圖",
+    "packing":       "打包",
+    "expenses":      "費用",
+    "more":          "更多",
+    "emergency":     "緊急",
+    "members":       "成員",
+    "settings":      "設定",
     "notifications": "通知"
   },
   "home": {

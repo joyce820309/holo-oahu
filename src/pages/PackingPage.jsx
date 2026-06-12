@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, FolderPlus, MoreHorizontal, PackagePlus, Pencil, Square, Trash2, X } from 'lucide-react'
+import { Check, PackagePlus, Pencil, Settings2, Square, Trash2, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { usePacking } from '../hooks/usePacking'
 import { useAuth } from '../contexts/AuthContext'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -44,7 +45,7 @@ function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZh
 
 // ── Swipeable item row ─────────────────────────────────────────────────────
 
-const ACTION_W = 112  // total width of edit + delete buttons
+const ACTION_W = 112
 
 function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
   const [offset, setOffset] = useState(0)
@@ -85,7 +86,6 @@ function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
     }
   }, [offset, canEdit])
 
-  // close when another row opens (click outside)
   useEffect(() => {
     if (offset === 0) return
     const h = () => setOffset(0)
@@ -95,12 +95,8 @@ function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
 
   return (
     <div ref={rowRef} style={{ position: 'relative', overflow: 'hidden', borderRadius: 12 }}>
-      {/* action buttons (behind) */}
       {canEdit && (
-        <div style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0,
-          width: ACTION_W, display: 'flex',
-        }}>
+        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: ACTION_W, display: 'flex' }}>
           <button
             className="flex-1 flex items-center justify-center"
             style={{ background: 'color-mix(in srgb, var(--accent) 90%, black)', color: 'white' }}
@@ -117,8 +113,6 @@ function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
           </button>
         </div>
       )}
-
-      {/* card (foreground) */}
       <div
         className={`glass-mini p-3 flex items-center justify-between ${item.checked ? 'opacity-60' : ''}`}
         style={{ transform: `translateX(${offset}px)`, transition: isDragging.current ? 'none' : 'transform 0.2s ease', position: 'relative', zIndex: 1 }}
@@ -132,7 +126,6 @@ function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
             {bi(item.item, lang)}
           </span>
         </button>
-        {/* desktop edit/delete */}
         {canEdit && (
           <div className="hidden md:flex gap-1 ml-2">
             <button className="text-secondary p-1.5 rounded-lg" onClick={onEdit}><Pencil size={14} /></button>
@@ -144,67 +137,51 @@ function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
   )
 }
 
-// ── Category ⋯ menu ────────────────────────────────────────────────────────
+// ── Inline item form ───────────────────────────────────────────────────────
 
-function CategoryMenu({ onAddItem, onEdit, onDelete }) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const h = e => { if (!ref.current?.contains(e.target)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    document.addEventListener('touchstart', h)
-    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('touchstart', h) }
-  }, [])
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button className="text-secondary p-2 rounded-lg" onClick={() => setOpen(v => !v)}>
-        <MoreHorizontal size={17} />
-      </button>
-      {open && (
-        <div style={{
-          position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 200,
-          background: 'var(--glass-bg)', border: '0.5px solid var(--glass-border)',
-          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-          borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-          minWidth: 140, overflow: 'hidden',
-        }}>
-          <button className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left"
-            style={{ color: 'var(--text-primary)' }}
-            onMouseDown={() => { setOpen(false); onAddItem() }}>
-            <PackagePlus size={15} style={{ color: 'var(--accent)' }} />{t('packing.new')}
-          </button>
-          <button className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left"
-            style={{ color: 'var(--text-primary)', borderTop: '0.5px solid var(--mini-border)' }}
-            onMouseDown={() => { setOpen(false); onEdit() }}>
-            <Pencil size={15} style={{ color: 'var(--text-secondary)' }} />{t('packing.editCategory')}
-          </button>
-          <button className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-left"
-            style={{ color: '#e05555', borderTop: '0.5px solid var(--mini-border)' }}
-            onMouseDown={() => { setOpen(false); onDelete() }}>
-            <Trash2 size={15} />{t('packing.deleteCategory')}
-          </button>
-        </div>
-      )}
-    </div>
+function ItemForm({ categories, defaultCategoryId, lang, editingItem, onSave, onCancel }) {
+  const [inputLang, setInputLang] = useState('zh')
+  const [form, setForm] = useState(() => editingItem
+    ? { item: editingItem.item || { zh: '', en: '' }, categoryId: editingItem.categoryId || editingItem.category || defaultCategoryId }
+    : { item: { zh: '', en: '' }, categoryId: defaultCategoryId }
   )
-}
 
-// ── Inline form ────────────────────────────────────────────────────────────
-
-function InlineForm({ title, onClose, children, onSave, onCancel, saveLabel = '儲存' }) {
   return (
     <div className="glass-card p-4 mb-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-primary font-medium text-sm">{title}</p>
-        <button className="text-secondary p-1 rounded-lg" onClick={onClose}><X size={17} /></button>
+        <p className="text-primary font-medium text-sm">{editingItem ? '編輯項目' : '新增項目'}</p>
+        <button className="text-secondary p-1 rounded-lg" onClick={onCancel}><X size={17} /></button>
       </div>
-      {children}
+
+      <BilingualField
+        label="項目名稱"
+        inputLang={inputLang} setInputLang={setInputLang}
+        zhValue={form.item.zh} enValue={form.item.en}
+        onZhChange={v => setForm(f => ({ ...f, item: { ...f.item, zh: v } }))}
+        onEnChange={v => setForm(f => ({ ...f, item: { ...f.item, en: v } }))}
+        placeholder={lang === 'zh-TW' ? '例如：泳衣' : 'e.g. Swimsuit'}
+      />
+
+      <div className="space-y-1">
+        <label className="text-secondary text-sm">類別</label>
+        <div className="flex flex-wrap gap-2">
+          {categories.map(cat => (
+            <button key={cat.id} type="button"
+              onClick={() => setForm(f => ({ ...f, categoryId: cat.id }))}
+              className="px-3 py-1.5 rounded-full text-sm border"
+              style={{
+                background:  form.categoryId === cat.id ? 'var(--accent)' : 'var(--mini-bg)',
+                color:       form.categoryId === cat.id ? 'white'         : 'var(--text-secondary)',
+                borderColor: form.categoryId === cat.id ? 'var(--accent)' : 'var(--mini-border)',
+              }}
+            >{bi(cat.name, lang)}</button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex gap-3 pt-1">
         <button className="btn-ghost flex-1 justify-center" onClick={onCancel}>取消</button>
-        <button className="btn-primary flex-1 justify-center" onClick={onSave}>{saveLabel}</button>
+        <button className="btn-primary flex-1 justify-center" onClick={() => onSave(form)}>儲存</button>
       </div>
     </div>
   )
@@ -212,93 +189,43 @@ function InlineForm({ title, onClose, children, onSave, onCancel, saveLabel = '�
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
-const emptyCategoryForm = () => ({ name: { zh: '', en: '' } })
-const emptyItemForm = (categoryId = '') => ({ item: { zh: '', en: '' }, categoryId, owner: 'shared' })
-
 export default function PackingPage() {
   const { t, i18n } = useTranslation()
   const { canEditGeneral } = useAuth()
-  const { items, categories, loading, addItem, updateItem, deleteItem, addCategory, updateCategory, deleteCategory } = usePacking()
+  const { items, categories, loading, addItem, updateItem, deleteItem } = usePacking()
 
-  const [inputLang, setInputLang] = useState('zh')
-  const [showCategoryForm, setShowCategoryForm] = useState(false)
-  const [showItemForm, setShowItemForm]         = useState(false)
-  const [editingCategoryId, setEditingCategoryId] = useState(null)
-  const [editingItemId, setEditingItemId]         = useState(null)
-  const [delTarget, setDelTarget]                 = useState(null)
-  const [categoryForm, setCategoryForm] = useState(emptyCategoryForm())
-  const [itemForm, setItemForm]         = useState(emptyItemForm())
+  const [showItemForm, setShowItemForm]   = useState(false)
+  const [editingItem, setEditingItem]     = useState(null)
+  const [delTarget, setDelTarget]         = useState(null)
   const lang = i18n.language
 
-  const activeCategories = useMemo(() => categories, [categories])
-  const defaultCategoryId = activeCategories[0]?.id || ''
+  const categoriesWithItems = useMemo(
+    () => categories.filter(cat => items.some(i => (i.categoryId || i.category) === cat.id)),
+    [categories, items]
+  )
 
-  useEffect(() => {
-    if (!itemForm.categoryId && defaultCategoryId) {
-      setItemForm(f => ({ ...f, categoryId: defaultCategoryId }))
-    }
-  }, [defaultCategoryId, itemForm.categoryId])
-
+  const defaultCategoryId = categories[0]?.id || ''
   const checkedCount = items.filter(i => i.checked).length
 
-  const resetCategoryForm = () => { setCategoryForm(emptyCategoryForm()); setEditingCategoryId(null); setShowCategoryForm(false) }
-  const resetItemForm     = () => { setItemForm(emptyItemForm(defaultCategoryId)); setEditingItemId(null); setShowItemForm(false) }
+  const openAdd = () => { setEditingItem(null); setShowItemForm(true) }
+  const openEdit = (item) => { setEditingItem(item); setShowItemForm(true) }
+  const closeForm = () => { setShowItemForm(false); setEditingItem(null) }
 
-  const openCategoryForm = (cat = null) => {
-    setEditingCategoryId(cat?.id || null)
-    setCategoryForm(cat ? { name: cat.name || { zh: '', en: '' } } : emptyCategoryForm())
-    setShowItemForm(false)
-    setShowCategoryForm(true)
-  }
-
-  const openItemForm = (categoryId = defaultCategoryId, item = null) => {
-    setEditingItemId(item?.id || null)
-    setItemForm(item
-      ? { item: item.item || { zh: '', en: '' }, categoryId: item.categoryId || item.category || categoryId, owner: item.owner || 'shared' }
-      : emptyItemForm(categoryId)
-    )
-    setShowCategoryForm(false)
-    setShowItemForm(true)
-  }
-
-  const saveCategory = async () => {
-    if (!categoryForm.name.zh && !categoryForm.name.en) { toast.error(t('common.save')); return }
-    const data = { name: categoryForm.name, order: editingCategoryId ? activeCategories.find(c => c.id === editingCategoryId)?.order || 0 : activeCategories.length }
-    try {
-      if (editingCategoryId) await updateCategory(editingCategoryId, data)
-      else await addCategory(data)
-      resetCategoryForm(); toast.success(t('common.save'))
-    } catch { toast.error(t('common.save')) }
-  }
-
-  const saveItem = async () => {
-    if (!itemForm.item.zh && !itemForm.item.en) { toast.error(t('common.save')); return }
-    if (!itemForm.categoryId) { toast.error(t('packing.selectCategory')); return }
+  const saveItem = async (form) => {
+    if (!form.item.zh && !form.item.en) { toast.error('請輸入項目名稱'); return }
+    if (!form.categoryId) { toast.error('請選擇類別'); return }
     const data = {
-      item: itemForm.item, categoryId: itemForm.categoryId, category: itemForm.categoryId,
-      owner: itemForm.owner,
-      checked: editingItemId ? (items.find(i => i.id === editingItemId)?.checked || false) : false,
+      item: form.item,
+      categoryId: form.categoryId,
+      category: form.categoryId,
+      checked: editingItem ? (editingItem.checked || false) : false,
     }
     try {
-      if (editingItemId) await updateItem(editingItemId, data)
+      if (editingItem) await updateItem(editingItem.id, data)
       else await addItem(data)
-      resetItemForm(); toast.success(t('common.save'))
-    } catch { toast.error(t('common.save')) }
-  }
-
-  const confirmDelete = async () => {
-    if (!delTarget) return
-    try {
-      if (delTarget.type === 'category') await deleteCategory(delTarget.id)
-      else await deleteItem(delTarget.id)
-    } catch { toast.error(t('common.delete')) }
-    setDelTarget(null)
-  }
-
-  const requestDeleteCategory = (cat) => {
-    const count = items.filter(i => (i.categoryId || i.category) === cat.id).length
-    if (count > 0) { toast.error(t('packing.deleteCategory')); return }
-    setDelTarget({ type: 'category', id: cat.id })
+      closeForm()
+      toast.success('已儲存')
+    } catch { toast.error('儲存失敗') }
   }
 
   if (loading) return (
@@ -318,93 +245,45 @@ export default function PackingPage() {
         </div>
         {canEditGeneral && (
           <div className="flex gap-2">
-            <button className="btn-ghost px-3" title={t('packing.newCategory')} onClick={() => openCategoryForm()}>
-              <FolderPlus size={17} />
-            </button>
-            <button className="btn-primary" onClick={() => openItemForm()}>
+            <Link to="/trip/packing/categories" className="btn-ghost px-3" title="管理類別">
+              <Settings2 size={17} />
+            </Link>
+            <button className="btn-primary" onClick={openAdd}>
               <PackagePlus size={18} />{t('packing.new')}
             </button>
           </div>
         )}
       </div>
 
-      {/* Category form */}
-      {showCategoryForm && (
-        <InlineForm
-          title={editingCategoryId ? t('packing.editCategory') : t('packing.newCategory')}
-          onClose={resetCategoryForm} onCancel={resetCategoryForm} onSave={saveCategory}
-        >
-          <BilingualField
-            label={t('packing.categoryName')}
-            inputLang={inputLang} setInputLang={setInputLang}
-            zhValue={categoryForm.name.zh} enValue={categoryForm.name.en}
-            onZhChange={v => setCategoryForm(f => ({ ...f, name: { ...f.name, zh: v } }))}
-            onEnChange={v => setCategoryForm(f => ({ ...f, name: { ...f.name, en: v } }))}
-            placeholder={lang === 'zh-TW' ? '例如：衣物' : 'e.g. Clothing'}
-          />
-        </InlineForm>
-      )}
-
       {/* Item form */}
       {showItemForm && (
-        <InlineForm
-          title={editingItemId ? t('packing.editItem') : t('packing.newItem')}
-          onClose={resetItemForm} onCancel={resetItemForm} onSave={saveItem}
-        >
-          <BilingualField
-            label={t('packing.itemName')}
-            inputLang={inputLang} setInputLang={setInputLang}
-            zhValue={itemForm.item.zh} enValue={itemForm.item.en}
-            onZhChange={v => setItemForm(f => ({ ...f, item: { ...f.item, zh: v } }))}
-            onEnChange={v => setItemForm(f => ({ ...f, item: { ...f.item, en: v } }))}
-            placeholder={lang === 'zh-TW' ? '例如：泳衣' : 'e.g. Swimsuit'}
-          />
-          <div className="space-y-1">
-            <label className="text-secondary text-sm">{t('packing.selectCategory')}</label>
-            <div className="flex flex-wrap gap-2">
-              {activeCategories.map(cat => (
-                <button key={cat.id} type="button"
-                  onClick={() => setItemForm(f => ({ ...f, categoryId: cat.id }))}
-                  className="px-3 py-1.5 rounded-full text-sm border"
-                  style={{
-                    background:  itemForm.categoryId === cat.id ? 'var(--accent)' : 'var(--mini-bg)',
-                    color:       itemForm.categoryId === cat.id ? 'white'         : 'var(--text-secondary)',
-                    borderColor: itemForm.categoryId === cat.id ? 'var(--accent)' : 'var(--mini-border)',
-                  }}
-                >{bi(cat.name, lang)}</button>
-              ))}
-            </div>
-          </div>
-        </InlineForm>
+        <ItemForm
+          categories={categories}
+          defaultCategoryId={defaultCategoryId}
+          lang={lang}
+          editingItem={editingItem}
+          onSave={saveItem}
+          onCancel={closeForm}
+        />
       )}
 
-      {items.length === 0 && activeCategories.length === 0 && (
+      {items.length === 0 && (
         <p className="text-secondary text-center py-8">{t('packing.noData')}</p>
       )}
 
-      {/* Category list */}
+      {/* Category list — only show categories that have items */}
       <div className="space-y-5">
-        {activeCategories.map(cat => {
+        {categoriesWithItems.map(cat => {
           const catItems = items.filter(i => (i.categoryId || i.category) === cat.id)
           const catChecked = catItems.filter(i => i.checked).length
           return (
             <section key={cat.id}>
-              {/* Category header */}
               <div className="flex items-center justify-between mb-2 px-1">
                 <div>
                   <span className="text-primary font-medium text-sm">{bi(cat.name, lang)}</span>
                   <span className="text-secondary text-xs ml-2">{catChecked}/{catItems.length}</span>
                 </div>
-                {canEditGeneral && (
-                  <CategoryMenu
-                    onAddItem={() => openItemForm(cat.id)}
-                    onEdit={() => openCategoryForm(cat)}
-                    onDelete={() => requestDeleteCategory(cat)}
-                  />
-                )}
               </div>
-
-              {/* Items */}
               <div className="space-y-2">
                 {catItems.map(item => (
                   <SwipeableItemRow
@@ -413,19 +292,10 @@ export default function PackingPage() {
                     lang={lang}
                     canEdit={canEditGeneral}
                     onToggle={() => updateItem(item.id, { checked: !item.checked })}
-                    onEdit={() => openItemForm(cat.id, item)}
+                    onEdit={() => openEdit(item)}
                     onDelete={() => setDelTarget({ type: 'item', id: item.id })}
                   />
                 ))}
-                {catItems.length === 0 && (
-                  <button
-                    className="w-full glass-mini p-3 text-secondary text-sm text-center rounded-xl"
-                    style={{ border: '1px dashed var(--mini-border)' }}
-                    onClick={() => canEditGeneral && openItemForm(cat.id)}
-                  >
-                    {t('packing.addItem')}
-                  </button>
-                )}
               </div>
             </section>
           )
@@ -433,7 +303,13 @@ export default function PackingPage() {
       </div>
 
       {delTarget && (
-        <ConfirmDialog onConfirm={confirmDelete} onCancel={() => setDelTarget(null)} />
+        <ConfirmDialog
+          onConfirm={async () => {
+            try { await deleteItem(delTarget.id) } catch { toast.error('刪除失敗') }
+            setDelTarget(null)
+          }}
+          onCancel={() => setDelTarget(null)}
+        />
       )}
     </div>
   )

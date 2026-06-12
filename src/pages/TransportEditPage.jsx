@@ -52,7 +52,6 @@ export default function TransportEditPage() {
   const submit = async () => {
     try {
       await updateActivity(id, {
-        ...activity,
         transportAfter: {
           mode: form.mode,
           durationMin: form.durationMin ? parseInt(form.durationMin) : 0,

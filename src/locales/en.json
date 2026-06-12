@@ -7,14 +7,17 @@
     "blue": "Hanalei Blue"
   },
   "nav": {
-    "trip":      "Trip",
-    "map":       "Map",
-    "packing":   "Packing",
-    "expenses":  "Expenses",
-    "more":      "More",
-    "emergency": "Emergency",
-    "members":   "Members",
-    "settings":  "Settings",
+    "trip":          "Overview",
+    "activities":    "Schedule",
+    "flights":       "Flights",
+    "travel":        "Travel",
+    "map":           "Map",
+    "packing":       "Packing",
+    "expenses":      "Expenses",
+    "more":          "More",
+    "emergency":     "Emergency",
+    "members":       "Members",
+    "settings":      "Settings",
     "notifications": "Notifications"
   },
   "home": {

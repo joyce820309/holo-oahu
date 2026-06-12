@@ -16,10 +16,12 @@ import ActivitiesPage   from './pages/ActivitiesPage'
 import ActivityFormPage    from './pages/ActivityFormPage'
 import ActivityDetailPage  from './pages/ActivityDetailPage'
 import TransportEditPage   from './pages/TransportEditPage'
+import TravelPage       from './pages/TravelPage'
 import FlightsPage      from './pages/FlightsPage'
 import HotelsPage       from './pages/HotelsPage'
 import HotelDetailPage  from './pages/HotelDetailPage'
-import PackingPage      from './pages/PackingPage'
+import PackingPage           from './pages/PackingPage'
+import PackingCategoriesPage from './pages/PackingCategoriesPage'
 import ExpensesPage     from './pages/ExpensesPage'
 import EmergencyPage    from './pages/EmergencyPage'
 import MapPage          from './pages/MapPage'
@@ -55,17 +57,19 @@ function AppShell() {
           <Route path="/emergency" element={<EmergencyPage />} />
           <Route path="/" element={<Navigate to="/trip" replace />} />
           <Route path="/trip" element={<ProtectedRoute><TripPage /></ProtectedRoute>}>
-            <Route index                element={<HomePage />} />
-            <Route path="activities"    element={<ActivitiesPage />} />
-            <Route path="activities/new"               element={<ActivityFormPage />} />
-            <Route path="activities/:id"               element={<ActivityDetailPage />} />
-            <Route path="activities/:id/edit"          element={<ActivityFormPage />} />
-            <Route path="activities/:id/transport"     element={<TransportEditPage />} />
-            <Route path="flights"       element={<FlightsPage />} />
-            <Route path="hotels"        element={<HotelsPage />} />
-            <Route path="hotels/:id"    element={<HotelDetailPage />} />
+            <Route index element={<HomePage />} />
           </Route>
-          <Route path="/trip/packing"   element={<ProtectedRoute><PackingPage /></ProtectedRoute>} />
+          <Route path="/trip/activities"                     element={<ProtectedRoute><ActivitiesPage /></ProtectedRoute>} />
+          <Route path="/trip/activities/new"                 element={<ProtectedRoute><ActivityFormPage /></ProtectedRoute>} />
+          <Route path="/trip/activities/:id"                 element={<ProtectedRoute><ActivityDetailPage /></ProtectedRoute>} />
+          <Route path="/trip/activities/:id/edit"            element={<ProtectedRoute><ActivityFormPage /></ProtectedRoute>} />
+          <Route path="/trip/activities/:id/transport"       element={<ProtectedRoute><TransportEditPage /></ProtectedRoute>} />
+          <Route path="/trip/travel"    element={<ProtectedRoute><TravelPage /></ProtectedRoute>} />
+          <Route path="/trip/flights"   element={<ProtectedRoute><FlightsPage /></ProtectedRoute>} />
+          <Route path="/trip/hotels"    element={<ProtectedRoute><HotelsPage /></ProtectedRoute>} />
+          <Route path="/trip/hotels/:id" element={<ProtectedRoute><HotelDetailPage /></ProtectedRoute>} />
+          <Route path="/trip/packing"            element={<ProtectedRoute><PackingPage /></ProtectedRoute>} />
+          <Route path="/trip/packing/categories" element={<ProtectedRoute><PackingCategoriesPage /></ProtectedRoute>} />
           <Route path="/trip/expenses"  element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
           <Route path="/trip/map"       element={<ProtectedRoute><MapPage /></ProtectedRoute>} />
           <Route path="/trip/members"   element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />

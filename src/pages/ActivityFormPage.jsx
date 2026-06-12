@@ -2,13 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, Check } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Check, Loader2 } from 'lucide-react'
 import { useActivities } from '../hooks/useActivities'
 import ImageUploader from '../components/ImageUploader'
 import toast from 'react-hot-toast'
 
 const TYPES    = ['restaurant', 'attraction', 'beach', 'experience', 'other']
-const SEGMENTS = [{ id: 'hawaii', label: { zh: '夏威夷', en: 'Hawaii' } }, { id: 'seoul', label: { zh: '首爾', en: 'Seoul' } }]
+const SEGMENTS = [
+  { id: 'hawaii',  label: { zh: '夏威夷', en: 'Hawaii'  } },
+  { id: 'seoul',   label: { zh: '首爾',   en: 'Seoul'   } },
+  { id: 'transit', label: { zh: '轉機',   en: 'Transit' } },
+  { id: 'return',  label: { zh: '回程',   en: 'Return'  } },
+]
 
 const TRIP_START = new Date('2026-07-18')
 const TRIP_DAYS = Array.from({ length: 9 }, (_, i) => {
@@ -19,7 +24,7 @@ const TRIP_DAYS = Array.from({ length: 9 }, (_, i) => {
   return { value: `2026-${mm}-${dd}`, label: `${mm}-${dd} 第${i + 1}天` }
 })
 const HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
-const MINUTES = ['00', '15', '30', '45']
+const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
 
 const emptyForm = () => ({
   title:    { zh: '', en: '' },
@@ -149,10 +154,85 @@ function SelectField({ label, value, onChange, options, placeholder }) {
   )
 }
 
+function MinuteCombo({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [inputVal, setInputVal] = useState(value || '')
+  const wrapRef = useRef(null)
+
+  useEffect(() => { setInputVal(value || '') }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    const h = e => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+
+  const commit = (raw) => {
+    const n = parseInt(raw, 10)
+    if (!isNaN(n)) {
+      const clamped = String(Math.min(59, Math.max(0, n))).padStart(2, '0')
+      onChange(clamped)
+      setInputVal(clamped)
+    }
+    setOpen(false)
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flex: 1 }}>
+      <div className="flex items-center glass-mini rounded-xl overflow-hidden"
+        style={{ background: 'var(--mini-bg)', border: open ? '0.5px solid var(--accent)' : '0.5px solid var(--mini-border)', boxShadow: open ? '0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent)' : 'none' }}>
+        <input
+          type="number" min="0" max="59"
+          value={inputVal}
+          onChange={e => setInputVal(e.target.value)}
+          onFocus={() => setOpen(true)}
+          onBlur={e => { if (!wrapRef.current?.contains(e.relatedTarget)) commit(e.target.value) }}
+          onKeyDown={e => { if (e.key === 'Enter') commit(e.target.value); if (e.key === 'Escape') setOpen(false) }}
+          placeholder="分"
+          className="flex-1 px-3 py-2.5 text-sm outline-none bg-transparent"
+          style={{ color: inputVal ? 'var(--text-primary)' : 'var(--text-secondary)', minWidth: 0, width: '100%' }}
+        />
+        <button type="button" onMouseDown={e => { e.preventDefault(); setOpen(v => !v) }}
+          className="px-2 py-2.5" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+          <ChevronDown size={14} strokeWidth={1.5} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </button>
+      </div>
+      {open && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: wrapRef.current ? wrapRef.current.getBoundingClientRect().bottom + 6 : 0,
+          left: wrapRef.current ? wrapRef.current.getBoundingClientRect().left : 0,
+          width: wrapRef.current ? wrapRef.current.getBoundingClientRect().width : 120,
+          zIndex: 9999, background: 'var(--glass-bg)', border: '0.5px solid var(--glass-border)',
+          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+          borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden',
+        }}>
+          <div style={{ maxHeight: 200, overflowY: 'auto', padding: '4px 0' }}>
+            {MINUTES.map(m => (
+              <button key={m} type="button"
+                onMouseDown={() => { onChange(m); setInputVal(m); setOpen(false) }}
+                className="w-full px-3 py-2.5 text-sm text-left"
+                style={{
+                  background: m === value ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
+                  color: m === value ? 'var(--accent)' : 'var(--text-primary)',
+                  fontWeight: m === value ? 500 : 400,
+                }}>
+                {m} 分
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 function TimeSelect({ label, value, onChange }) {
   const [h, m] = value ? value.split(':') : ['', '']
   const setH = v => onChange(v ? `${v}:${m || '00'}` : '')
-  const setM = v => onChange(v ? `${h || '00'}:${v}` : '')
+  const setM = v => onChange(h ? `${h}:${v}` : `00:${v}`)
   return (
     <div className="space-y-1">
       <label className="text-secondary text-sm">{label}</label>
@@ -161,9 +241,7 @@ function TimeSelect({ label, value, onChange }) {
           <CustomSelect value={h || ''} onChange={setH} options={HOURS.map(v => ({ value: v, label: `${v} 時` }))} placeholder="時" />
         </div>
         <span className="text-secondary font-medium">:</span>
-        <div className="flex-1">
-          <CustomSelect value={m || ''} onChange={setM} options={MINUTES.map(v => ({ value: v, label: `${v} 分` }))} placeholder="分" />
-        </div>
+        <MinuteCombo value={m || ''} onChange={setM} />
       </div>
     </div>
   )
@@ -248,8 +326,11 @@ export default function ActivityFormPage() {
   const { id }      = useParams()
   const isNew       = !id || id === 'new'
   const { activities, addActivity, updateActivity } = useActivities()
-  const [form, setForm] = useState(emptyForm())
+  const [form, setForm]         = useState(emptyForm())
   const [inputLang, setInputLang] = useState('zh')
+  const [saving, setSaving]     = useState(false)
+  const [askNext, setAskNext]   = useState(false)
+  const submitting = useRef(false)
   const lang = i18n.language
 
   useEffect(() => {
@@ -274,8 +355,11 @@ export default function ActivityFormPage() {
   })
 
   const submit = async () => {
+    if (submitting.current) return
     if (!form.title.zh && !form.title.en) { toast.error('請輸入標題'); return }
     if (!form.date) { toast.error('請選擇日期'); return }
+    submitting.current = true
+    setSaving(true)
     const data = {
       ...form,
       lat: form.lat ? parseFloat(form.lat) : null,
@@ -286,11 +370,21 @@ export default function ActivityFormPage() {
       },
     }
     try {
-      if (isNew) await addActivity(data)
-      else await updateActivity(id, data)
-      toast.success(isNew ? '已新增' : '已儲存')
-      navigate('/trip/activities')
-    } catch { toast.error('儲存失敗') }
+      if (isNew) {
+        await addActivity(data)
+        setSaving(false)
+        setAskNext(true)
+      } else {
+        await updateActivity(id, data)
+        toast.success('已儲存')
+        navigate('/trip/activities')
+      }
+    } catch {
+      toast.error('儲存失敗')
+      setSaving(false)
+    } finally {
+      submitting.current = false
+    }
   }
 
   return (
@@ -401,9 +495,30 @@ export default function ActivityFormPage() {
 
         <div className="flex gap-3">
           <button className="btn-ghost flex-1 justify-center" onClick={() => navigate(-1)}>{t('common.cancel')}</button>
-          <button className="btn-primary flex-1 justify-center" onClick={submit}>{t('common.save')}</button>
+          <button className="btn-primary flex-1 justify-center" onClick={submit} disabled={saving}>
+            {saving ? <Loader2 size={18} className="animate-spin" /> : t('common.save')}
+          </button>
         </div>
       </div>
+
+      {askNext && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6"
+          style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+          <div className="glass-card p-6 w-full max-w-sm space-y-4">
+            <p className="text-primary font-medium text-lg">已新增！繼續新增下一筆？</p>
+            <div className="flex gap-3">
+              <button className="btn-ghost flex-1 justify-center"
+                onClick={() => { setAskNext(false); navigate('/trip/activities') }}>
+                完成
+              </button>
+              <button className="btn-primary flex-1 justify-center"
+                onClick={() => { setAskNext(false); setForm(emptyForm()) }}>
+                繼續新增
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
