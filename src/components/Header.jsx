@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../contexts/ThemeContext'
+import { useAuth } from '../contexts/AuthContext'
 import { Sun, Waves } from 'lucide-react'
 
 export default function Header() {
   const { t, i18n } = useTranslation()
   const { theme, toggleTheme } = useTheme()
+  const { user } = useAuth()
 
   const toggleLang = () => {
     const next = i18n.language === 'zh-TW' ? 'en' : 'zh-TW'
@@ -22,7 +24,9 @@ export default function Header() {
       <div className="flex items-center gap-1.5">
         <Waves size={18} style={{ color: 'var(--accent)' }} />
         <span className="font-medium text-primary text-base">{t('appName')}</span>
-        <span className="text-secondary text-xs ml-1 hidden sm:inline">{t('appSubtitle')}</span>
+        {user?.displayName && (
+          <span className="text-secondary text-xs ml-1">{user.displayName}</span>
+        )}
       </div>
 
       <div className="flex items-center gap-1.5">

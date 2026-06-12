@@ -111,6 +111,18 @@ export function AuthProvider({ children }) {
   const resetPassword = (email) => sendPasswordResetEmail(auth, email)
   const logout = () => signOut(auth)
 
+  const updateDisplayName = async (name) => {
+    if (!auth.currentUser) return
+    const trimmed = name.trim()
+    await updateProfile(auth.currentUser, { displayName: trimmed })
+    // Reflect locally without waiting for onAuthStateChanged
+    setUser(u => u ? { ...u, displayName: trimmed } : u)
+    // Sync Firestore users doc + trip.members
+    const userRef = doc(db, 'users', auth.currentUser.uid)
+    await setDoc(userRef, { name: trimmed }, { merge: true })
+    await syncTripMember({ ...auth.currentUser, displayName: trimmed }, role)
+  }
+
   const isOwner        = role === 'owner'
   const isAdmin        = role === 'owner' || role === 'admin'
   const canManageMembers = isOwner
@@ -134,6 +146,7 @@ export function AuthProvider({ children }) {
         signupWithEmail,
         resetPassword,
         logout,
+        updateDisplayName,
       }}
     >
       {children}

@@ -1,7 +1,7 @@
 {
   "name": "holo",
   "private": true,
-  "version": "260612-1",
+  "version": "0.0.3",
   "type": "module",
   "scripts": {
     "dev": "vite",

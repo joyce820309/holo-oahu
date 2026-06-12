@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, Check, Loader2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Check, Loader2, Copy, MoveRight } from 'lucide-react'
 import { useActivities } from '../hooks/useActivities'
 import ImageUploader from '../components/ImageUploader'
 import toast from 'react-hot-toast'
@@ -320,6 +320,70 @@ function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZh
   )
 }
 
+// 'copy' | 'move' | null
+function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
+  const [selected, setSelected] = useState(currentDate || '')
+  const isCopy = mode === 'copy'
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="glass-card w-full max-w-sm p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-primary font-medium text-base">
+            {isCopy ? '複製到哪天？' : '移動到哪天？'}
+          </p>
+          <button
+            onClick={onClose}
+            style={{ color: 'var(--text-secondary)', padding: 4, fontSize: 16, lineHeight: 1 }}
+          >✕</button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          {TRIP_DAYS.map(({ value, label }) => {
+            const isActive  = value === selected
+            const isCurrent = value === currentDate
+            const disabled  = isCurrent && !isCopy
+            // label format: "07-18 第1天" → split at space
+            const [dateStr, dayStr] = label.split(' ')
+            return (
+              <button
+                key={value}
+                onClick={() => !disabled && setSelected(value)}
+                className="rounded-xl border flex flex-col items-center justify-center gap-0.5"
+                style={{
+                  padding: '10px 4px',
+                  background: isActive ? 'var(--accent)' : 'var(--mini-bg)',
+                  color: isActive ? 'white' : isCurrent ? 'var(--accent)' : 'var(--text-primary)',
+                  borderColor: isActive ? 'var(--accent)' : isCurrent ? 'color-mix(in srgb, var(--accent) 60%, transparent)' : 'var(--mini-border)',
+                  fontWeight: isActive || isCurrent ? 600 : 400,
+                  opacity: disabled ? 0.35 : 1,
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  fontSize: 13,
+                }}
+              >
+                <span>{dayStr}</span>
+                <span style={{ fontSize: 10, opacity: 0.7 }}>{dateStr}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <button
+          className="btn-primary w-full justify-center"
+          disabled={!selected || (!isCopy && selected === currentDate)}
+          onClick={() => onConfirm(selected)}
+        >
+          {isCopy ? <Copy size={16} /> : <MoveRight size={16} />}
+          {isCopy ? '複製到此日' : '移動到此日'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ActivityFormPage() {
   const { t, i18n } = useTranslation()
   const navigate    = useNavigate()
@@ -330,6 +394,7 @@ export default function ActivityFormPage() {
   const [inputLang, setInputLang] = useState('zh')
   const [saving, setSaving]     = useState(false)
   const [askNext, setAskNext]   = useState(false)
+  const [dateSheet, setDateSheet] = useState(null) // 'copy' | 'move' | null
   const submitting = useRef(false)
   const lang = i18n.language
 
@@ -353,6 +418,33 @@ export default function ActivityFormPage() {
     if (parts.length === 3) return { ...f, [parts[0]]: { ...f[parts[0]], [parts[1]]: { ...f[parts[0]][parts[1]], [parts[2]]: value } } }
     return f
   })
+
+  const handleDateAction = async (targetDate) => {
+    const mode = dateSheet
+    setDateSheet(null)
+    const data = {
+      ...form,
+      date: targetDate,
+      lat: form.lat ? parseFloat(form.lat) : null,
+      lng: form.lng ? parseFloat(form.lng) : null,
+      transportAfter: {
+        ...form.transportAfter,
+        durationMin: form.transportAfter.durationMin ? parseInt(form.transportAfter.durationMin) : 0,
+      },
+    }
+    try {
+      if (mode === 'copy') {
+        await addActivity(data)
+        toast.success(`已複製到 ${targetDate}`)
+      } else {
+        await updateActivity(id, { date: targetDate })
+        toast.success(`已移動到 ${targetDate}`)
+        navigate('/trip/activities')
+      }
+    } catch {
+      toast.error('操作失敗')
+    }
+  }
 
   const submit = async () => {
     if (submitting.current) return
@@ -493,6 +585,25 @@ export default function ActivityFormPage() {
           />
         </div>
 
+        {!isNew && (
+          <div className="flex gap-2">
+            <button
+              className="btn-ghost flex-1 justify-center"
+              onClick={() => setDateSheet('copy')}
+              style={{ fontSize: 13 }}
+            >
+              <Copy size={15} />複製到其他日
+            </button>
+            <button
+              className="btn-ghost flex-1 justify-center"
+              onClick={() => setDateSheet('move')}
+              style={{ fontSize: 13 }}
+            >
+              <MoveRight size={15} />移動到其他日
+            </button>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button className="btn-ghost flex-1 justify-center" onClick={() => navigate(-1)}>{t('common.cancel')}</button>
           <button className="btn-primary flex-1 justify-center" onClick={submit} disabled={saving}>
@@ -500,6 +611,15 @@ export default function ActivityFormPage() {
           </button>
         </div>
       </div>
+
+      {dateSheet && (
+        <DatePickerSheet
+          mode={dateSheet}
+          currentDate={form.date}
+          onConfirm={handleDateAction}
+          onClose={() => setDateSheet(null)}
+        />
+      )}
 
       {askNext && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-6"

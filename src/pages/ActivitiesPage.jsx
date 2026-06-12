@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 import {
@@ -19,6 +20,7 @@ import { useActivities } from '../hooks/useActivities'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { ActivitiesSkeleton } from '../components/Skeleton'
 
+const TRIP_START = '2026-07-18'
 const ACTION_WIDTH = 128
 const SWIPE_THRESHOLD = 48
 
@@ -44,7 +46,86 @@ function bi(field, lang) {
   return field[lang === 'zh-TW' ? 'zh' : 'en'] || field.zh || field.en || ''
 }
 
-// ── Swipeable card (normal mode only) ─────────────────────────────────────
+// Day N label from date string
+function dayLabel(dateStr) {
+  const start = new Date(TRIP_START)
+  const cur   = new Date(dateStr)
+  const diff  = Math.round((cur - start) / 86400000)
+  const d = cur.getMonth() + 1 + '/' + cur.getDate()
+  return { n: diff + 1, d }
+}
+
+// ── Context menu (⋮) — portal-based to avoid overflow clipping ───────────
+function CardMenu({ onView, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos]   = useState({ top: 0, right: 0 })
+  const btnRef = useRef(null)
+
+  const openMenu = e => {
+    e.stopPropagation()
+    const r = btnRef.current.getBoundingClientRect()
+    setPos({ top: r.bottom + 4, right: window.innerWidth - r.right })
+    setOpen(true)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const close = e => {
+      if (!btnRef.current?.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('touchstart', close, { passive: true })
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('touchstart', close) }
+  }, [open])
+
+  const items = [
+    { label: '查看詳情', Icon: MapPinned, action: onView },
+    { label: '編輯',     Icon: Pencil,   action: onEdit  },
+    { label: '刪除',     Icon: Trash2,   action: onDelete, danger: true },
+  ]
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        onClick={openMenu}
+        style={{ padding: 6, color: 'var(--text-secondary)', minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, flexShrink: 0 }}
+        aria-label="更多選項"
+      >
+        <EllipsisVertical size={16} />
+      </button>
+
+      {open && createPortal(
+        <div
+          style={{
+            position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999,
+            background: 'var(--glass-bg)', backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '0.5px solid var(--glass-border)', borderRadius: 12,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.18)', minWidth: 128, overflow: 'hidden',
+          }}
+        >
+          {items.map(({ label, Icon, action, danger }) => (
+            <button
+              key={label}
+              onClick={e => { e.stopPropagation(); setOpen(false); action() }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                padding: '11px 14px', fontSize: 14, textAlign: 'left', background: 'none', border: 'none',
+                color: danger ? '#e05555' : 'var(--text-primary)', cursor: 'pointer',
+              }}
+            >
+              <Icon size={15} />{label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
+// ── Swipeable card (normal mode, mobile) ──────────────────────────────────
 function SwipeableCard({ children, onDelete, onEdit }) {
   const [offset, setOffset] = useState(0)
   const [open, setOpen]     = useState(false)
@@ -115,24 +196,18 @@ function SortableItem({ id, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
     <div ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.4 : 1,
-        position: 'relative',
-        zIndex: isDragging ? 50 : 1,
-      }}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, position: 'relative', zIndex: isDragging ? 50 : 1 }}
     >
       {children({ dragHandleProps: { ...attributes, ...listeners } })}
     </div>
   )
 }
 
-// ── Activity card (shared between modes) ──────────────────────────────────
-function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen }) {
-  const isFlight  = !!activity.flightId
-  const Icon      = isFlight ? Plane : (TYPE_ICONS[activity.type] || MapPin)
-  const crossDay  = activity.startTime && activity.endTime && activity.endTime < activity.startTime
+// ── Activity card ──────────────────────────────────────────────────────────
+function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView }) {
+  const isFlight = !!activity.flightId
+  const Icon     = isFlight ? Plane : (TYPE_ICONS[activity.type] || MapPin)
+  const crossDay = activity.startTime && activity.endTime && activity.endTime < activity.startTime
 
   const flightStyle = isFlight ? {
     background: 'color-mix(in srgb, var(--accent) 6%, var(--glass-bg))',
@@ -140,7 +215,7 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen }) 
   } : {}
 
   return (
-    <div className="glass-card p-4" style={{ ...flightStyle, cursor: editMode ? 'default' : 'pointer' }}>
+    <div className="glass-card p-4" style={{ ...flightStyle }}>
       <div className="flex items-start gap-3">
         {editMode && (
           <button
@@ -166,25 +241,20 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen }) 
             </p>
           )}
         </div>
-        {!editMode && onMapOpen && (
-          <button className="p-1.5 rounded-lg flex-shrink-0"
-            style={{ minWidth: 32, minHeight: 32, color: 'var(--accent)' }}
-            onClick={e => { e.stopPropagation(); onMapOpen() }}>
-            <MapPinned size={15} />
-          </button>
+        {!editMode && (
+          <CardMenu onView={onView} onEdit={onEdit} onDelete={onDelete} />
         )}
       </div>
     </div>
   )
 }
 
-// ── Date group with sortable list ──────────────────────────────────────────
+// ── Date group ─────────────────────────────────────────────────────────────
 function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder }) {
   const { t } = useTranslation()
   const [localItems, setLocalItems] = useState(items)
   const [activeId, setActiveId] = useState(null)
 
-  // Sync when parent updates (e.g. after Firestore write)
   useEffect(() => { setLocalItems(items) }, [items])
 
   const sensors = useSensors(
@@ -195,7 +265,6 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
   const segments = new Set(items.map(a => a.segmentId).filter(Boolean))
   const isTransit = segments.has('transit')
   const isReturn  = segments.has('return')
-
   const activeItem = activeId ? localItems.find(a => a.id === activeId) : null
 
   function handleDragEnd(event) {
@@ -249,10 +318,15 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                 ? `${activity.lat},${activity.lng}`
                 : (bi(activity.address, lang) ? encodeURIComponent(bi(activity.address, lang)) : null)
 
+              const cardActions = {
+                onView:   () => navigate(`/trip/activities/${activity.id}`),
+                onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
+                onDelete: () => setDelId(activity.id),
+              }
+
               return (
                 <div key={activity.id}>
                   <div className="flex items-start gap-3 relative" style={{ zIndex: 1 }}>
-                    {/* Left: dot + time (normal mode only) */}
                     {!editMode && (
                       <div className="flex flex-col items-center flex-shrink-0" style={{ width: 40 }}>
                         <div className="flex items-center justify-center rounded-full text-white text-xs font-bold"
@@ -267,7 +341,6 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                       </div>
                     )}
 
-                    {/* Card */}
                     <div className="flex-1 min-w-0">
                       {editMode ? (
                         <SortableItem id={activity.id}>
@@ -275,38 +348,23 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                             <ActivityCard
                               activity={activity} lang={lang}
                               editMode={true} dragHandleProps={dragHandleProps}
+                              {...cardActions}
                             />
                           )}
                         </SortableItem>
                       ) : (
-                        <>
-                          <div className="md:hidden">
-                            <SwipeableCard
-                              onDelete={() => setDelId(activity.id)}
-                              onEdit={() => navigate(`/trip/activities/${activity.id}/edit`)}
-                            >
-                              <div onClick={() => navigate(`/trip/activities/${activity.id}`)}>
-                                <ActivityCard
-                                  activity={activity} lang={lang}
-                                  editMode={false}
-                                  onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
-                                />
-                              </div>
-                            </SwipeableCard>
-                          </div>
-                          <div className="hidden md:block" onClick={() => navigate(`/trip/activities/${activity.id}`)}>
-                            <ActivityCard
-                              activity={activity} lang={lang}
-                              editMode={false}
-                              onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
-                            />
-                          </div>
-                        </>
+                        <div onClick={() => navigate(`/trip/activities/${activity.id}`)}>
+                          <ActivityCard
+                            activity={activity} lang={lang}
+                            editMode={false}
+                            onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
+                            {...cardActions}
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Transport connector (normal mode only) */}
                   {!editMode && idx < localItems.length - 1 && (
                     <div className="flex items-center gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
                       <div style={{ width: 40, flexShrink: 0 }} />
@@ -328,7 +386,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                         <button
                           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
                           style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
-                          onClick={() => navigate(`/trip/activities/${activity.id}/transport`)}
+                          onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
                         >
                           <Plus size={12} />設定交通
                         </button>
@@ -340,11 +398,10 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
             })}
           </SortableContext>
 
-          {/* Ghost card while dragging */}
           <DragOverlay>
             {activeItem && (
               <div style={{ opacity: 0.9, transform: 'scale(1.02)', boxShadow: '0 12px 32px rgba(0,0,0,0.2)' }}>
-                <ActivityCard activity={activeItem} lang={lang} editMode={true} dragHandleProps={{}} />
+                <ActivityCard activity={activeItem} lang={lang} editMode={true} dragHandleProps={{}} onView={() => {}} onEdit={() => {}} onDelete={() => {}} />
               </div>
             )}
           </DragOverlay>
@@ -354,16 +411,129 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
   )
 }
 
+// All 9 trip days — shown regardless of whether activities exist
+const TRIP_START_DATE = '2026-07-18'
+const TRIP_END_DATE   = '2026-07-26'
+const ALL_TRIP_DATES  = Array.from({ length: 9 }, (_, i) => {
+  const d = new Date(TRIP_START_DATE)
+  d.setDate(d.getDate() + i)
+  return d.toISOString().slice(0, 10)
+})
+
+// Return the tab id to auto-select on load
+function getInitialTab() {
+  const today = new Date().toISOString().slice(0, 10)
+  if (today >= TRIP_START_DATE && today <= TRIP_END_DATE) return today
+  return 'all'
+}
+
+// ── Day tabs ───────────────────────────────────────────────────────────────
+function DayTabs({ activeTab, onChange, lang }) {
+  const scrollRef  = useRef(null)
+  const activeRef  = useRef(null)
+  const [canScroll, setCanScroll] = useState(false)
+
+  // Check if scroll container overflows (mobile) to show fade mask
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const check = () => setCanScroll(el.scrollWidth > el.clientWidth + 4)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Center the active tab when it changes (mobile only)
+  useEffect(() => {
+    const el = activeRef.current
+    if (!el) return
+    el.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+  }, [activeTab])
+
+  const allLabel = lang === 'zh-TW' ? '全部' : 'All'
+  const tabs = [
+    { id: 'all', label: allLabel, sub: null },
+    ...ALL_TRIP_DATES.map(d => {
+      const { n, d: md } = dayLabel(d)
+      return { id: d, label: `Day ${n}`, sub: md }
+    }),
+  ]
+
+  return (
+    // Wrapper: relative so the fade pseudo-overlay can be positioned inside
+    <div style={{ position: 'relative', marginBottom: 16 }}>
+      {/* Scroll container — horizontal on mobile, wraps on md+ */}
+      <div
+        ref={scrollRef}
+        style={{
+          display: 'flex',
+          flexWrap: 'nowrap',      // overridden to wrap on ≥768 via className
+          gap: 6,
+          overflowX: 'auto',
+          paddingBottom: 4,
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}
+        className="hide-scrollbar md:flex-wrap md:overflow-x-visible"
+      >
+        {tabs.map(tab => {
+          const isActive = tab.id === activeTab
+          return (
+            <button
+              key={tab.id}
+              ref={isActive ? activeRef : null}
+              onClick={() => onChange(tab.id)}
+              style={{
+                flexShrink: 0,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                padding: tab.sub ? '5px 10px' : '7px 12px',
+                borderRadius: 20,
+                border: isActive ? '1.5px solid var(--accent)' : '1px solid var(--mini-border)',
+                background: isActive ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'var(--mini-bg)',
+                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                fontWeight: isActive ? 600 : 400,
+                fontSize: 12,
+                lineHeight: 1.2,
+                cursor: 'pointer',
+                minHeight: 34,
+                minWidth: tab.sub ? 50 : 40,
+                textAlign: 'center',
+                transition: 'border-color 0.15s, background 0.15s, color 0.15s',
+              }}
+            >
+              <span>{tab.label}</span>
+              {tab.sub && <span style={{ fontSize: 9, opacity: 0.7, marginTop: 1 }}>{tab.sub}</span>}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Right-edge fade mask — only shown when content overflows, hidden on md+ */}
+      {canScroll && (
+        <div
+          className="md:hidden"
+          style={{
+            position: 'absolute', top: 0, right: 0, bottom: 4,
+            width: 48, pointerEvents: 'none',
+            background: 'var(--tab-fade)',
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function ActivitiesPage() {
   const { t, i18n } = useTranslation()
   const { activities, loading, deleteActivity, updateActivity } = useActivities()
-  const navigate  = useNavigate()
-  const [delId, setDelId]     = useState(null)
+  const navigate   = useNavigate()
+  const [delId, setDelId]       = useState(null)
   const [editMode, setEditMode] = useState(false)
+  const [activeTab, setActiveTab] = useState(getInitialTab)
   const lang = i18n.language
 
-  // Sort: order field first, then startTime
   const sorted = [...activities].sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date)
     const oa = a.order ?? 9999, ob = b.order ?? 9999
@@ -377,13 +547,13 @@ export default function ActivitiesPage() {
     return acc
   }, {})
 
+  const allDates = Object.keys(byDate).sort()
+
+  // Filter by active tab
+  const visibleDates = activeTab === 'all' ? allDates : allDates.filter(d => d === activeTab)
+
   async function handleReorder(date, reorderedItems) {
-    // Write order index back to Firestore
-    await Promise.all(
-      reorderedItems.map((item, idx) =>
-        updateActivity(item.id, { order: idx })
-      )
-    )
+    await Promise.all(reorderedItems.map((item, idx) => updateActivity(item.id, { order: idx })))
   }
 
   return (
@@ -407,7 +577,11 @@ export default function ActivitiesPage() {
       </div>
 
       {editMode && (
-        <p className="text-secondary text-xs mb-4 text-center">長按並拖拉 <GripVertical size={11} className="inline" /> 調整順序</p>
+        <p className="text-secondary text-xs mb-4 text-center">長按並拖拉 <GripVertical size={11} className="inline" /> 調整同日順序</p>
+      )}
+
+      {!loading && (
+        <DayTabs activeTab={activeTab} onChange={tab => { setActiveTab(tab); setEditMode(false) }} lang={lang} />
       )}
 
       {loading && <ActivitiesSkeleton />}
@@ -415,11 +589,11 @@ export default function ActivitiesPage() {
         <p className="text-secondary text-center py-8">{t('activities.noData')}</p>
       )}
 
-      {Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, items]) => (
+      {visibleDates.map(date => (
         <DateGroup
           key={date}
           date={date}
-          items={items}
+          items={byDate[date]}
           editMode={editMode}
           lang={lang}
           navigate={navigate}

@@ -16,6 +16,7 @@
   --text-secondary: #8b6355;
   --color-skeleton: rgba(196,122,90,0.15);
   --color-border:   rgba(255,220,200,0.6);
+  --tab-fade: linear-gradient(to right, rgba(232,213,196,0) 40%, #d4bfc8 100%);
 }
 
 [data-theme="blue"] {
@@ -31,6 +32,7 @@
   --text-secondary: #3d6478;
   --color-skeleton: rgba(42,122,155,0.15);
   --color-border:   rgba(180,220,240,0.6);
+  --tab-fade: linear-gradient(to right, rgba(200,220,232,0) 40%, #d0e4de 100%);
 }
 
 * {
@@ -124,6 +126,14 @@ body {
   align-items: center;
   gap: 6px;
   backdrop-filter: blur(8px);
+}
+
+/* Remove browser focus ring on buttons — we style focus states ourselves */
+button:focus-visible {
+  outline: none;
+}
+button:focus {
+  outline: none;
 }
 
 /* Global input / select styles */
