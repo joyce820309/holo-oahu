@@ -557,17 +557,22 @@ export default function ActivitiesPage() {
   }
 
   return (
-    <div className="px-4 pb-24">
+    <div
+      className="px-4 pb-24"
+      style={editMode ? { userSelect: 'none', WebkitUserSelect: 'none' } : {}}
+    >
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('activities.title')}</h2>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setEditMode(v => !v)}
-            className="btn-ghost"
-            style={editMode ? { color: 'var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)' } : {}}
-          >
-            {editMode ? <><Check size={16} />完成</> : '編輯'}
-          </button>
+          {/* Edit button — only shown when viewing a single day (not 'all') */}
+          {activeTab !== 'all' && !editMode && (
+            <button
+              onClick={() => setEditMode(true)}
+              className="btn-ghost"
+            >
+              編輯
+            </button>
+          )}
           {!editMode && (
             <Link to="/trip/activities/new" className="btn-primary">
               <Plus size={18} />{t('activities.new')}
@@ -577,7 +582,9 @@ export default function ActivitiesPage() {
       </div>
 
       {editMode && (
-        <p className="text-secondary text-xs mb-4 text-center">長按並拖拉 <GripVertical size={11} className="inline" /> 調整同日順序</p>
+        <p className="text-secondary text-xs mb-4 text-center">
+          長按並拖拉 <GripVertical size={11} className="inline" /> 調整同日順序
+        </p>
       )}
 
       {!loading && (
@@ -601,6 +608,33 @@ export default function ActivitiesPage() {
           onReorder={(reordered) => handleReorder(date, reordered)}
         />
       ))}
+
+      {/* Floating Done button — only visible in edit mode */}
+      {editMode && (
+        <button
+          onClick={() => setEditMode(false)}
+          style={{
+            position: 'fixed',
+            right: 20,
+            bottom: 88,
+            zIndex: 100,
+            background: 'var(--accent)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 99,
+            padding: '12px 22px',
+            fontSize: 15,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+            cursor: 'pointer',
+          }}
+        >
+          <Check size={18} />完成
+        </button>
+      )}
 
       {delId && (
         <ConfirmDialog
