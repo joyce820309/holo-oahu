@@ -6,6 +6,7 @@ import {
   Plus, UtensilsCrossed, Ticket, Waves, Star, MapPin, Trash2, Pencil,
   Car, Bus, Footprints, Truck, EllipsisVertical, MapPinned,
   Plane, ArrowLeftRight, RotateCcw, GripVertical, Check,
+  ArrowUpCircle, ArrowDownCircle, Navigation,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
@@ -56,7 +57,7 @@ function dayLabel(dateStr) {
 }
 
 // ── Context menu (⋮) — portal-based to avoid overflow clipping ───────────
-function CardMenu({ onView, onEdit, onDelete }) {
+function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
   const [open, setOpen] = useState(false)
   const [pos, setPos]   = useState({ top: 0, right: 0 })
   const btnRef = useRef(null)
@@ -70,7 +71,6 @@ function CardMenu({ onView, onEdit, onDelete }) {
 
   useEffect(() => {
     if (!open) return
-    // Delay attaching so the opening click doesn't immediately close the menu
     const tid = setTimeout(() => {
       const close = e => {
         if (!btnRef.current?.contains(e.target)) setOpen(false)
@@ -82,10 +82,12 @@ function CardMenu({ onView, onEdit, onDelete }) {
   }, [open])
 
   const items = [
-    { label: '查看詳情', Icon: MapPinned, action: onView },
-    { label: '編輯',     Icon: Pencil,   action: onEdit  },
-    { label: '刪除',     Icon: Trash2,   action: onDelete, danger: true },
-  ]
+    { label: '查看詳情', Icon: MapPinned,       action: onView,    show: !!onView    },
+    { label: '編輯',     Icon: Pencil,           action: onEdit,    show: true        },
+    { label: '移入正式', Icon: ArrowUpCircle,    action: onPromote, show: !!onPromote },
+    { label: '退回草稿', Icon: ArrowDownCircle,  action: onDemote,  show: !!onDemote  },
+    { label: '刪除',     Icon: Trash2,           action: onDelete,  show: true, danger: true },
+  ].filter(i => i.show)
 
   return (
     <>
@@ -212,7 +214,7 @@ function SortableItem({ id, children }) {
 }
 
 // ── Activity card ──────────────────────────────────────────────────────────
-function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView }) {
+function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote }) {
   const isFlight = !!activity.flightId
   const Icon     = isFlight ? Plane : (TYPE_ICONS[activity.type] || MapPin)
   const crossDay = activity.startTime && activity.endTime && activity.endTime < activity.startTime
@@ -247,16 +249,33 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
             onMouseLeave={e => { if (!editMode && onView) e.currentTarget.style.color = '' }}
             onClick={e => { if (!editMode && onView) { e.stopPropagation(); onView() } }}
           >{bi(activity.title, lang)}</p>
-          {bi(activity.location, lang) && <p className="text-secondary text-sm mt-0.5">{bi(activity.location, lang)}</p>}
           {activity.startTime && (
-            <p className="text-secondary text-xs mt-1">
+            <p className="text-secondary text-xs mt-0.5">
               {activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}
               {crossDay && <span style={{ marginLeft: 4, color: 'var(--accent)', fontWeight: 500 }}>+1</span>}
             </p>
           )}
+          {!editMode && bi(activity.address, lang) && (() => {
+            const displayName = bi(activity.location, lang) || bi(activity.address, lang)
+            const mapTarget = activity.lat && activity.lng
+              ? `${activity.lat},${activity.lng}`
+              : encodeURIComponent(bi(activity.address, lang))
+            return (
+              <button
+                className="flex items-center gap-1 mt-1.5"
+                style={{ color: 'var(--accent)', fontSize: 12, maxWidth: '100%' }}
+                onClick={e => { e.stopPropagation(); window.open(`https://maps.google.com/?q=${mapTarget}`) }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                <Navigation size={11} style={{ flexShrink: 0 }} />
+                <span className="truncate">{displayName}</span>
+              </button>
+            )
+          })()}
         </div>
         {!editMode && (
-          <CardMenu onView={onView} onEdit={onEdit} onDelete={onDelete} />
+          <CardMenu onView={onView} onEdit={onEdit} onDelete={onDelete} onPromote={onPromote} onDemote={onDemote} />
         )}
       </div>
     </div>
@@ -306,7 +325,7 @@ function FlightGroupBox({ children, landingTime }) {
 }
 
 // ── Date group ─────────────────────────────────────────────────────────────
-function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder }) {
+function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder, onDemote }) {
   const { t } = useTranslation()
   const [localItems, setLocalItems] = useState(items)
   const [activeId, setActiveId] = useState(null)
@@ -395,6 +414,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                 onView:   () => navigate(`/trip/activities/${activity.id}`),
                 onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
                 onDelete: () => setDelId(activity.id),
+                onDemote: onDemote ? () => onDemote(activity.id) : undefined,
               }
               const listForTransport = editMode ? localItems : realItems
 
@@ -471,6 +491,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                     onView:   () => navigate(`/trip/activities/${activity.id}`),
                     onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
                     onDelete: () => setDelId(activity.id),
+                    onDemote: onDemote ? () => onDemote(activity.id) : undefined,
                   }
                   return (
                     <div key={activity.id}>
@@ -542,6 +563,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder 
                 onView:   () => navigate(`/trip/activities/${activity.id}`),
                 onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
                 onDelete: () => setDelId(activity.id),
+                onDemote: onDemote ? () => onDemote(activity.id) : undefined,
               }
               return (
                 <div key={activity.id}>
@@ -723,21 +745,66 @@ function DayTabs({ activeTab, onChange, lang }) {
   )
 }
 
+// ── Draft list ─────────────────────────────────────────────────────────────
+function DraftList({ drafts, lang, navigate, setDelId, onPromote }) {
+  if (drafts.length === 0) return (
+    <p className="text-secondary text-center py-8">尚無草稿行程</p>
+  )
+  return (
+    <div className="space-y-3">
+      {drafts.map(activity => {
+        const Icon = TYPE_ICONS[activity.type] || MapPin
+        return (
+          <div key={activity.id} className="glass-card p-4" style={{ border: '1px dashed color-mix(in srgb, var(--text-secondary) 30%, transparent)' }}>
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 p-2 rounded-lg flex-shrink-0" style={{ background: 'var(--mini-bg)' }}>
+                <Icon size={18} style={{ color: 'var(--text-secondary)' }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-primary font-medium text-base leading-snug"
+                  style={{ cursor: 'pointer', transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+                  onMouseLeave={e => e.currentTarget.style.color = ''}
+                  onClick={() => navigate(`/trip/activities/${activity.id}`)}
+                >{bi(activity.title, lang)}</p>
+                {bi(activity.location, lang) && (
+                  <p className="text-secondary text-sm mt-0.5">{bi(activity.location, lang)}</p>
+                )}
+                {activity.date && (
+                  <p className="text-secondary text-xs mt-1">{activity.date}{activity.startTime ? ` · ${activity.startTime}` : ''}</p>
+                )}
+              </div>
+              <CardMenu
+                onEdit={() => navigate(`/trip/activities/${activity.id}/edit`)}
+                onDelete={() => setDelId(activity.id)}
+                onPromote={() => onPromote(activity.id)}
+              />
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function ActivitiesPage() {
   const { t, i18n } = useTranslation()
   const { activities, loading, deleteActivity, updateActivity } = useActivities()
   const navigate   = useNavigate()
-  const [delId, setDelId]       = useState(null)
-  const [editMode, setEditMode] = useState(false)
+  const [delId, setDelId]         = useState(null)
+  const [editMode, setEditMode]   = useState(false)
+  const [statusTab, setStatusTab] = useState('confirmed')
   const [activeTab, setActiveTab] = useState(() => {
     return sessionStorage.getItem('activities_tab') || getInitialTab()
   })
   const lang = i18n.language
 
-  const sorted = [...activities].sort((a, b) => {
+  const confirmed = activities.filter(a => (a.status ?? 'confirmed') === 'confirmed')
+  const drafts    = activities.filter(a => a.status === 'draft')
+
+  const sorted = [...confirmed].sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date)
-    // Flight activities always sort after real activities within a day
     const af = a.flightId ? 1 : 0, bf = b.flightId ? 1 : 0
     if (af !== bf) return af - bf
     const oa = a.order ?? 9999, ob = b.order ?? 9999
@@ -752,13 +819,14 @@ export default function ActivitiesPage() {
   }, {})
 
   const allDates = Object.keys(byDate).sort()
-
-  // Filter by active tab
   const visibleDates = activeTab === 'all' ? allDates : allDates.filter(d => d === activeTab)
 
   async function handleReorder(date, reorderedItems) {
     await Promise.all(reorderedItems.map((item, idx) => updateActivity(item.id, { order: idx })))
   }
+
+  const promote = id => updateActivity(id, { status: 'confirmed' }).catch(() => {})
+  const demote  = id => updateActivity(id, { status: 'draft'     }).catch(() => {})
 
   return (
     <div
@@ -768,76 +836,105 @@ export default function ActivitiesPage() {
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('activities.title')}</h2>
         <div className="flex items-center gap-2">
-          {/* Edit button — only shown when viewing a single day (not 'all') */}
-          {activeTab !== 'all' && !editMode && (
-            <button
-              onClick={() => setEditMode(true)}
-              className="btn-ghost"
-            >
-              編輯
-            </button>
+          {statusTab === 'confirmed' && activeTab !== 'all' && !editMode && (
+            <button onClick={() => setEditMode(true)} className="btn-ghost">編輯</button>
           )}
           {!editMode && (
-            <Link to="/trip/activities/new" className="btn-primary">
+            <Link
+              to={`/trip/activities/new${statusTab === 'draft' ? '?draft=1' : ''}`}
+              className="btn-primary"
+            >
               <Plus size={18} />{t('activities.new')}
             </Link>
           )}
         </div>
       </div>
 
-      {editMode && (
-        <p className="text-secondary text-xs mb-4 text-center">
-          長按並拖拉 <GripVertical size={11} className="inline" /> 調整同日順序
-        </p>
+      {/* Status tabs: 行程 / 草稿 */}
+      <div className="flex gap-1 mb-4">
+        {[
+          { key: 'confirmed', label: '行程' },
+          { key: 'draft',     label: `草稿${drafts.length > 0 ? ` ${drafts.length}` : ''}` },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => { setStatusTab(key); setEditMode(false) }}
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            style={statusTab === key
+              ? { background: 'var(--accent)', color: 'white' }
+              : { color: 'var(--text-secondary)' }
+            }
+          >{label}</button>
+        ))}
+      </div>
+
+      {/* ── Confirmed tab ── */}
+      {statusTab === 'confirmed' && (
+        <>
+          {editMode && (
+            <p className="text-secondary text-xs mb-4 text-center">
+              長按並拖拉 <GripVertical size={11} className="inline" /> 調整同日順序
+            </p>
+          )}
+
+          {!loading && (
+            <DayTabs
+              activeTab={activeTab}
+              onChange={tab => { setActiveTab(tab); sessionStorage.setItem('activities_tab', tab); setEditMode(false) }}
+              lang={lang}
+            />
+          )}
+
+          {loading && <ActivitiesSkeleton />}
+          {!loading && confirmed.length === 0 && (
+            <p className="text-secondary text-center py-8">{t('activities.noData')}</p>
+          )}
+
+          {visibleDates.map(date => (
+            <DateGroup
+              key={date}
+              date={date}
+              items={byDate[date]}
+              editMode={editMode}
+              lang={lang}
+              navigate={navigate}
+              setDelId={setDelId}
+              onReorder={(reordered) => handleReorder(date, reordered)}
+              onDemote={demote}
+            />
+          ))}
+
+          {editMode && (
+            <button
+              onClick={() => setEditMode(false)}
+              style={{
+                position: 'fixed', right: 20, bottom: 88, zIndex: 100,
+                background: 'var(--accent)', color: 'white', border: 'none',
+                borderRadius: 99, padding: '12px 22px', fontSize: 15, fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 8,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)', cursor: 'pointer',
+              }}
+            >
+              <Check size={18} />完成
+            </button>
+          )}
+        </>
       )}
 
-      {!loading && (
-        <DayTabs activeTab={activeTab} onChange={tab => { setActiveTab(tab); sessionStorage.setItem('activities_tab', tab); setEditMode(false) }} lang={lang} />
-      )}
-
-      {loading && <ActivitiesSkeleton />}
-      {!loading && activities.length === 0 && (
-        <p className="text-secondary text-center py-8">{t('activities.noData')}</p>
-      )}
-
-      {visibleDates.map(date => (
-        <DateGroup
-          key={date}
-          date={date}
-          items={byDate[date]}
-          editMode={editMode}
-          lang={lang}
-          navigate={navigate}
-          setDelId={setDelId}
-          onReorder={(reordered) => handleReorder(date, reordered)}
-        />
-      ))}
-
-      {/* Floating Done button — only visible in edit mode */}
-      {editMode && (
-        <button
-          onClick={() => setEditMode(false)}
-          style={{
-            position: 'fixed',
-            right: 20,
-            bottom: 88,
-            zIndex: 100,
-            background: 'var(--accent)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 99,
-            padding: '12px 22px',
-            fontSize: 15,
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-            cursor: 'pointer',
-          }}
-        >
-          <Check size={18} />完成
-        </button>
+      {/* ── Draft tab ── */}
+      {statusTab === 'draft' && (
+        <>
+          {loading && <ActivitiesSkeleton />}
+          {!loading && (
+            <DraftList
+              drafts={drafts}
+              lang={lang}
+              navigate={navigate}
+              setDelId={setDelId}
+              onPromote={promote}
+            />
+          )}
+        </>
       )}
 
       {delId && (

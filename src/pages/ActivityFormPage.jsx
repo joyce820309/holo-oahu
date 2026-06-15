@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ChevronDown, Check, Loader2, Copy, MoveRight } from 'lucide-react'
 import { useActivities } from '../hooks/useActivities'
 import ImageUploader from '../components/ImageUploader'
@@ -388,13 +388,15 @@ export default function ActivityFormPage() {
   const { t, i18n } = useTranslation()
   const navigate    = useNavigate()
   const { id }      = useParams()
+  const [searchParams] = useSearchParams()
   const isNew       = !id || id === 'new'
   const { activities, addActivity, updateActivity } = useActivities()
-  const [form, setForm]         = useState(emptyForm())
+  const [form, setForm]           = useState(emptyForm())
+  const [isDraft, setIsDraft]     = useState(() => searchParams.get('draft') === '1')
   const [inputLang, setInputLang] = useState('zh')
-  const [saving, setSaving]     = useState(false)
-  const [askNext, setAskNext]   = useState(false)
-  const [dateSheet, setDateSheet] = useState(null) // 'copy' | 'move' | null
+  const [saving, setSaving]       = useState(false)
+  const [askNext, setAskNext]     = useState(false)
+  const [dateSheet, setDateSheet] = useState(null)
   const submitting = useRef(false)
   const lang = i18n.language
 
@@ -402,6 +404,7 @@ export default function ActivityFormPage() {
     if (!isNew) {
       const a = activities.find(x => x.id === id)
       if (a) {
+        setIsDraft(a.status === 'draft')
         setForm({
           ...emptyForm(),
           ...a,
@@ -449,11 +452,12 @@ export default function ActivityFormPage() {
   const submit = async () => {
     if (submitting.current) return
     if (!form.title.zh && !form.title.en) { toast.error('請輸入標題'); return }
-    if (!form.date) { toast.error('請選擇日期'); return }
+    if (!isDraft && !form.date) { toast.error('請選擇日期'); return }
     submitting.current = true
     setSaving(true)
     const data = {
       ...form,
+      status: isDraft ? 'draft' : 'confirmed',
       lat: form.lat ? parseFloat(form.lat) : null,
       lng: form.lng ? parseFloat(form.lng) : null,
       transportAfter: {
@@ -491,6 +495,29 @@ export default function ActivityFormPage() {
       </div>
 
       <div className="space-y-4">
+
+        {/* Draft toggle */}
+        <div className="glass-card p-4 flex items-center justify-between">
+          <div>
+            <p className="text-primary font-medium text-sm">草稿模式</p>
+            <p className="text-secondary text-xs mt-0.5">草稿不顯示在正式行程，日期和時間可不填</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsDraft(v => !v)}
+            style={{
+              width: 44, height: 26, borderRadius: 99, padding: 3, flexShrink: 0,
+              background: isDraft ? 'var(--accent)' : 'var(--mini-border)',
+              display: 'flex', alignItems: 'center',
+              justifyContent: isDraft ? 'flex-end' : 'flex-start',
+              transition: 'background 0.2s, justify-content 0.2s',
+              border: 'none', cursor: 'pointer',
+            }}
+          >
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+          </button>
+        </div>
+
         <div className="glass-card p-4 space-y-3">
           <BilingualField
             label={lang === 'zh-TW' ? '標題' : 'Title'}
@@ -499,16 +526,18 @@ export default function ActivityFormPage() {
             onZhChange={v => set('title.zh', v)} onEnChange={v => set('title.en', v)}
           />
           <BilingualField
-            label={lang === 'zh-TW' ? '地點' : 'Location'}
-            inputLang={inputLang} setInputLang={setInputLang}
-            zhValue={form.location.zh} enValue={form.location.en}
-            onZhChange={v => set('location.zh', v)} onEnChange={v => set('location.en', v)}
-          />
-          <BilingualField
-            label={lang === 'zh-TW' ? '地址' : 'Address'}
+            label={lang === 'zh-TW' ? '導航地址' : 'Navigation Address'}
             inputLang={inputLang} setInputLang={setInputLang}
             zhValue={form.address.zh} enValue={form.address.en}
             onZhChange={v => set('address.zh', v)} onEnChange={v => set('address.en', v)}
+            placeholder={lang === 'zh-TW' ? '貼上地址或地點名稱，導航用' : 'Paste address for navigation'}
+          />
+          <BilingualField
+            label={lang === 'zh-TW' ? '顯示名稱（選填）' : 'Display Name (optional)'}
+            inputLang={inputLang} setInputLang={setInputLang}
+            zhValue={form.location.zh} enValue={form.location.en}
+            onZhChange={v => set('location.zh', v)} onEnChange={v => set('location.en', v)}
+            placeholder={lang === 'zh-TW' ? '短名稱，例如：Diamond Head' : 'Short name, e.g. Diamond Head'}
           />
         </div>
 
@@ -552,13 +581,13 @@ export default function ActivityFormPage() {
           </div>
 
           <SelectField
-            label={t('activities.fields.date')}
+            label={`${t('activities.fields.date')}${isDraft ? '（選填）' : ''}`}
             value={form.date}
             onChange={v => set('date', v)}
             options={TRIP_DAYS}
           />
-          <TimeSelect label={t('activities.fields.startTime')} value={form.startTime} onChange={v => set('startTime', v)} />
-          <TimeSelect label={t('activities.fields.endTime')}   value={form.endTime}   onChange={v => set('endTime', v)} />
+          <TimeSelect label={`${t('activities.fields.startTime')}${isDraft ? '（選填）' : ''}`} value={form.startTime} onChange={v => set('startTime', v)} />
+          <TimeSelect label={`${t('activities.fields.endTime')}${isDraft ? '（選填）' : ''}`}   value={form.endTime}   onChange={v => set('endTime', v)} />
         </div>
 
         <div className="glass-card p-4 space-y-3">

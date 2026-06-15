@@ -85,9 +85,24 @@ export default function ActivityDetailPage() {
               <h2 className="text-primary font-semibold text-lg leading-snug">
                 {bi(activity.title, lang)}
               </h2>
-              {bi(activity.location, lang) && (
-                <p className="text-secondary text-sm mt-0.5">{bi(activity.location, lang)}</p>
-              )}
+              {address && (() => {
+                const displayName = bi(activity.location, lang) || address
+                const mapTarget = activity.lat && activity.lng
+                  ? `${activity.lat},${activity.lng}`
+                  : encodeURIComponent(address)
+                return (
+                  <button
+                    className="flex items-center gap-1 mt-1"
+                    style={{ color: 'var(--accent)', fontSize: 13, maxWidth: '100%', transition: 'opacity 0.15s' }}
+                    onClick={() => window.open(`https://maps.google.com/?q=${mapTarget}`)}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    <Navigation size={13} style={{ flexShrink: 0 }} />
+                    <span className="truncate text-left">{displayName}</span>
+                  </button>
+                )
+              })()}
             </div>
           </div>
 
@@ -110,15 +125,15 @@ export default function ActivityDetailPage() {
         {/* Address */}
         {address && (
           <div className="glass-card p-4 space-y-3">
-            <p className="text-secondary text-xs font-medium uppercase tracking-wide">{t('activities.fields.addressZh')?.replace('（中文）','') || '地址'}</p>
+            <p className="text-secondary text-xs font-medium uppercase tracking-wide">導航地址</p>
             <div className="flex items-start gap-2">
-              <MapPin size={14} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2 }} />
+              <MapPin size={14} style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 3 }} />
               <p className="text-primary text-sm leading-snug">{address}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button className="btn-ghost text-xs px-2.5 py-1" onClick={copyAddress}>
                 {copied ? <Check size={12} /> : <Copy size={12} />}
-                {t('common.copy')}
+                {copied ? '已複製' : '複製地址'}
               </button>
               <button
                 className="btn-ghost text-xs px-2.5 py-1"
@@ -129,16 +144,14 @@ export default function ActivityDetailPage() {
                   window.open(`https://maps.google.com/?q=${q}`)
                 }}
               >
-                <Map size={12} />
-                {t('common.openMap')}
+                <Map size={12} />Google Maps
               </button>
               {activity.segmentId === 'seoul' && activity.lat && activity.lng && (
                 <button
                   className="btn-ghost text-xs px-2.5 py-1"
                   onClick={() => window.open(`nmap://place?lat=${activity.lat}&lng=${activity.lng}&name=${encodeURIComponent(bi(activity.title, lang))}&appname=holo`)}
                 >
-                  <Navigation size={12} />
-                  {t('common.naverMap')}
+                  <Navigation size={12} />Naver Maps
                 </button>
               )}
             </div>
