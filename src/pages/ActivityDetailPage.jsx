@@ -4,6 +4,7 @@ import { ArrowLeft, Pencil, UtensilsCrossed, Ticket, Waves, Star, MapPin, Copy, 
 import { useState } from 'react'
 import { useActivities } from '../hooks/useActivities'
 import { ActivityDetailSkeleton } from '../components/Skeleton'
+import NoteContent from '../components/NoteContent'
 import toast from 'react-hot-toast'
 
 const TYPE_ICONS = {
@@ -162,7 +163,7 @@ export default function ActivityDetailPage() {
         {bi(activity.note, lang) && (
           <div className="glass-card p-4">
             <p className="text-secondary text-xs font-medium uppercase tracking-wide mb-2">備註</p>
-            <p className="text-primary text-sm leading-relaxed">{bi(activity.note, lang)}</p>
+            <NoteContent text={bi(activity.note, lang)} className="text-primary text-sm leading-relaxed" />
           </div>
         )}
 
@@ -180,7 +181,7 @@ export default function ActivityDetailPage() {
               )}
             </div>
             {bi(activity.transportAfter.note, lang) && (
-              <p className="text-secondary text-sm mt-2">{bi(activity.transportAfter.note, lang)}</p>
+              <NoteContent text={bi(activity.transportAfter.note, lang)} className="text-secondary text-sm leading-relaxed mt-2" />
             )}
           </div>
         )}

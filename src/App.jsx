@@ -28,6 +28,7 @@ import MapPage          from './pages/MapPage'
 import MembersPage      from './pages/MembersPage'
 import SettingsPage     from './pages/SettingsPage'
 import NotificationsPage from './pages/NotificationsPage'
+import WeatherDetailPage from './pages/WeatherDetailPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -75,6 +76,7 @@ function AppShell() {
           <Route path="/trip/members"   element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
           <Route path="/trip/settings"  element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
           <Route path="/trip/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/trip/weather/hotel" element={<ProtectedRoute><WeatherDetailPage /></ProtectedRoute>} />
         </Routes>
       </main>
       {user && !isLoginPage && <BottomNav />}

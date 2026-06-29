@@ -288,7 +288,13 @@ function InputField({ label, value, onChange, type = 'text', placeholder }) {
   )
 }
 
-function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZhChange, onEnChange, type = 'text', placeholder }) {
+function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZhChange, onEnChange, type = 'text', placeholder, multiline = false, rows = 4 }) {
+  const value = inputLang === 'zh' ? zhValue : enValue
+  const onValueChange = (v) => {
+    if (inputLang === 'zh') onZhChange(v)
+    else onEnChange(v)
+  }
+
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
@@ -308,14 +314,25 @@ function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZh
           ))}
         </div>
       </div>
-      <input
-        type={type}
-        value={inputLang === 'zh' ? zhValue : enValue}
-        onChange={e => inputLang === 'zh' ? onZhChange(e.target.value) : onEnChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full glass-mini px-3 py-2.5 text-primary text-base outline-none rounded-xl"
-        style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
-      />
+      {multiline ? (
+        <textarea
+          value={value}
+          onChange={e => onValueChange(e.target.value)}
+          placeholder={placeholder}
+          rows={rows}
+          className="w-full glass-mini px-3 py-2.5 text-primary text-base outline-none rounded-xl resize-y"
+          style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onChange={e => onValueChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full glass-mini px-3 py-2.5 text-primary text-base outline-none rounded-xl"
+          style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
+        />
+      )}
     </div>
   )
 }
@@ -596,6 +613,8 @@ export default function ActivityFormPage() {
             inputLang={inputLang} setInputLang={setInputLang}
             zhValue={form.note.zh} enValue={form.note.en}
             onZhChange={v => set('note.zh', v)} onEnChange={v => set('note.en', v)}
+            multiline
+            rows={5}
           />
           <AdvancedToggle>
             <InputField label={t('activities.fields.lat')}     value={form.lat}     onChange={v => set('lat', v)}     type="number" />

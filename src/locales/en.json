@@ -23,17 +23,27 @@
   "home": {
     "title":       "Trip Overview",
     "taiwan":      "Taiwan",
+    "hotelWaikiki": "Hotel Area (Waikiki)",
     "hawaii":      "Hawaii",
     "seoul":       "Seoul",
     "tripDates":   "Jul 18 – Jul 26",
     "daysLeft":    "days until departure",
     "tripStarted": "Trip in progress",
-    "noTrip":      "No trip data yet"
+    "noTrip":      "No trip data yet",
+    "viewRecentDay": "View Schedule",
+    "recentDay": {
+      "before": "Day 1 Schedule",
+      "during": "Today's Schedule",
+      "after": "Last Day Schedule",
+      "date": "Date: {{date}}"
+    },
+    "deviceTime": "Device time: {{time}} ({{timezone}})"
   },
   "weather": {
     "temp":     "Temp",
     "wind":     "Wind",
     "humidity": "Humidity",
+    "detailsCta": "View hotel-area weather details",
     "code": {
       "0":  "Clear sky",
       "1":  "Mainly clear",
@@ -48,6 +58,23 @@
       "80": "Rain showers",
       "95": "Thunderstorm"
     }
+  },
+  "weatherDetail": {
+    "title": "Hotel Area Weather",
+    "now": "Now",
+    "hourly24h": "Next 24 Hours",
+    "hourlyHint": "Hourly rain chance, rainfall, wind, feels-like temp, UV and visibility",
+    "feelsLike": "Feels like",
+    "rainChance": "Rain chance",
+    "rainChanceMax": "Today's peak rain chance",
+    "rainAmount": "Rainfall",
+    "wind": "Wind",
+    "humidity": "Humidity",
+    "uvMax": "Today's max UV",
+    "cloudCover": "Cloud cover",
+    "visibility": "Visibility",
+    "loadError": "Failed to load weather data",
+    "tryLater": "Please try again later"
   },
   "activities": {
     "title":  "Activities",
@@ -126,6 +153,41 @@
       "confirmCode": "Confirmation Code",
       "phone":       "Hotel Phone",
       "note":        "Note"
+    }
+  },
+  "carRental": {
+    "title": "Car Rental",
+    "new": "Add Rental",
+    "noData": "No car rental records yet",
+    "saved": "Saved",
+    "saveFailed": "Failed to save",
+    "deleteFailed": "Failed to delete",
+    "errors": {
+      "companyNameRequired": "Please enter rental company name"
+    },
+    "fields": {
+      "companyName": "Company Name",
+      "address": "Address",
+      "phone": "Phone",
+      "note": "Note",
+      "pickupAt": "Pickup Time",
+      "returnAt": "Return Time",
+      "carClass": "Car Class",
+      "reservationNo": "Reservation No.",
+      "insurancePolicy": "Insurance Plan",
+      "fuelPolicy": "Fuel Policy"
+    },
+    "suggest": {
+      "carClass": "e.g. SUV / 7-seater",
+      "insurance": "e.g. with CDW / zero deductible",
+      "fuel": "e.g. full-to-full"
+    },
+    "tipsTitle": "Recommended Rental Info",
+    "tips": {
+      "insurance": "Confirm insurance coverage and deductible before pickup.",
+      "fuel": "Check fuel policy early (full-to-full or prepaid fuel).",
+      "pickup": "Record pickup/return time, location, and reservation code.",
+      "parking": "Check local parking rules and rates in advance."
     }
   },
   "packing": {
@@ -272,6 +334,7 @@
     }
   },
   "common": {
+    "back":    "Back",
     "save":    "Save",
     "cancel":  "Cancel",
     "delete":  "Delete",

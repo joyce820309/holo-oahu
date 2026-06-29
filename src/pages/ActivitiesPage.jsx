@@ -1,7 +1,7 @@
 ﻿import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, UtensilsCrossed, Ticket, Waves, Star, MapPin, Trash2, Pencil,
   Car, Bus, Footprints, Truck, EllipsisVertical, MapPinned,
@@ -20,8 +20,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { useActivities } from '../hooks/useActivities'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { ActivitiesSkeleton } from '../components/Skeleton'
+import { TRIP_START_DATE, TRIP_END_DATE, getRecentTripDateByDeviceDate, getDeviceDateString } from '../lib/tripCalendar'
 
-const TRIP_START = '2026-07-18'
 const ACTION_WIDTH = 128
 const SWIPE_THRESHOLD = 48
 
@@ -49,7 +49,7 @@ function bi(field, lang) {
 
 // Day N label from date string
 function dayLabel(dateStr) {
-  const start = new Date(TRIP_START)
+  const start = new Date(TRIP_START_DATE)
   const cur   = new Date(dateStr)
   const diff  = Math.round((cur - start) / 86400000)
   const d = cur.getMonth() + 1 + '/' + cur.getDate()
@@ -633,8 +633,6 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
 }
 
 // All 9 trip days — shown regardless of whether activities exist
-const TRIP_START_DATE = '2026-07-18'
-const TRIP_END_DATE   = '2026-07-26'
 const ALL_TRIP_DATES  = Array.from({ length: 9 }, (_, i) => {
   const d = new Date(TRIP_START_DATE)
   d.setDate(d.getDate() + i)
@@ -643,9 +641,7 @@ const ALL_TRIP_DATES  = Array.from({ length: 9 }, (_, i) => {
 
 // Return the tab id to auto-select on load
 function getInitialTab() {
-  const today = new Date().toISOString().slice(0, 10)
-  if (today >= TRIP_START_DATE && today <= TRIP_END_DATE) return today
-  return 'all'
+  return getRecentTripDateByDeviceDate(getDeviceDateString())
 }
 
 // ── Day tabs ───────────────────────────────────────────────────────────────
@@ -792,6 +788,7 @@ export default function ActivitiesPage() {
   const { t, i18n } = useTranslation()
   const { activities, loading, deleteActivity, updateActivity } = useActivities()
   const navigate   = useNavigate()
+  const [searchParams] = useSearchParams()
   const [delId, setDelId]         = useState(null)
   const [editMode, setEditMode]   = useState(false)
   const [statusTab, setStatusTab] = useState('confirmed')
@@ -820,6 +817,16 @@ export default function ActivitiesPage() {
 
   const allDates = Object.keys(byDate).sort()
   const visibleDates = activeTab === 'all' ? allDates : allDates.filter(d => d === activeTab)
+
+  useEffect(() => {
+    const qDate = searchParams.get('date')
+    const isValidTripDate = qDate && qDate >= TRIP_START_DATE && qDate <= TRIP_END_DATE
+    if (!isValidTripDate) return
+    setStatusTab('confirmed')
+    setEditMode(false)
+    setActiveTab(qDate)
+    sessionStorage.setItem('activities_tab', qDate)
+  }, [searchParams])
 
   async function handleReorder(date, reorderedItems) {
     await Promise.all(reorderedItems.map((item, idx) => updateActivity(item.id, { order: idx })))

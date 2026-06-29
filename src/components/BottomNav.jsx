@@ -62,15 +62,15 @@ export default function BottomNav() {
         </div>
       )}
 
-      {/* upward fade mask above nav */}
+      {/* upward fade mask — extends from content area all the way to screen bottom */}
       <div
         style={{
           position: 'fixed',
-          bottom: 76,
+          bottom: 0,
           left: 0,
           right: 0,
-          height: 72,
-          background: 'linear-gradient(to bottom, transparent, var(--bg-to))',
+          height: 148,
+          background: 'linear-gradient(to bottom, transparent, var(--bg-to) 55%)',
           pointerEvents: 'none',
           zIndex: 49,
         }}

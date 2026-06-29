@@ -23,17 +23,27 @@
   "home": {
     "title":       "行程總覽",
     "taiwan":      "台灣",
+    "hotelWaikiki": "飯店附近（Waikiki）",
     "hawaii":      "夏威夷",
     "seoul":       "首爾",
     "tripDates":   "7/18 – 7/26",
     "daysLeft":    "天後出發",
     "tripStarted": "旅程進行中",
-    "noTrip":      "尚無行程資料"
+    "noTrip":      "尚無行程資料",
+    "viewRecentDay": "查看行程",
+    "recentDay": {
+      "before": "第一天行程",
+      "during": "當日行程",
+      "after": "最後一天行程",
+      "date": "日期：{{date}}"
+    },
+    "deviceTime": "裝置時間：{{time}}（{{timezone}}）"
   },
   "weather": {
     "temp":     "溫度",
     "wind":     "風速",
     "humidity": "濕度",
+    "detailsCta": "查看飯店附近天氣詳情",
     "code": {
       "0":  "晴天",
       "1":  "大致晴",
@@ -48,6 +58,23 @@
       "80": "陣雨",
       "95": "雷陣雨"
     }
+  },
+  "weatherDetail": {
+    "title": "飯店附近天氣",
+    "now": "現在",
+    "hourly24h": "未來 24 小時",
+    "hourlyHint": "每小時：降雨機率、降雨量、風速、體感溫度、UV 與能見度",
+    "feelsLike": "體感溫度",
+    "rainChance": "降雨機率",
+    "rainChanceMax": "今日最高降雨機率",
+    "rainAmount": "降雨量",
+    "wind": "風速",
+    "humidity": "濕度",
+    "uvMax": "今日 UV 最高值",
+    "cloudCover": "雲量",
+    "visibility": "能見度",
+    "loadError": "天氣資料讀取失敗",
+    "tryLater": "請稍後再試"
   },
   "activities": {
     "title":      "活動行程",
@@ -126,6 +153,41 @@
       "confirmCode": "確認碼",
       "phone":       "飯店電話",
       "note":        "備注"
+    }
+  },
+  "carRental": {
+    "title": "租車",
+    "new": "新增租車",
+    "noData": "尚無租車資料",
+    "saved": "已儲存",
+    "saveFailed": "儲存失敗",
+    "deleteFailed": "刪除失敗",
+    "errors": {
+      "companyNameRequired": "請輸入租車行名稱"
+    },
+    "fields": {
+      "companyName": "租車行名稱",
+      "address": "地址",
+      "phone": "電話",
+      "note": "備註",
+      "pickupAt": "取車時間",
+      "returnAt": "還車時間",
+      "carClass": "車型",
+      "reservationNo": "預約代號",
+      "insurancePolicy": "保險方案",
+      "fuelPolicy": "加油政策"
+    },
+    "suggest": {
+      "carClass": "例如：SUV / 7人座",
+      "insurance": "例如：含 CDW / 免自負額",
+      "fuel": "例如：滿油取還"
+    },
+    "tipsTitle": "租車建議資訊",
+    "tips": {
+      "insurance": "確認保險範圍與自負額，避免理賠爭議。",
+      "fuel": "先確認加油政策（滿油取還或預付油資）。",
+      "pickup": "記錄取車與還車時間、地點與預約代號。",
+      "parking": "提前查目的地停車規則與費率。"
     }
   },
   "packing": {
@@ -272,6 +334,7 @@
     }
   },
   "common": {
+    "back":    "返回",
     "save":    "儲存",
     "cancel":  "取消",
     "delete":  "刪除",

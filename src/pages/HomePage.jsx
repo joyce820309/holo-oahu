@@ -1,8 +1,11 @@
 ﻿import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Cloud, Wind, Thermometer } from 'lucide-react'
+import { Wind, Thermometer, ChevronRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useTrip } from '../hooks/useTrip'
-import { Skeleton, WeatherSkeleton } from '../components/Skeleton'
+import { Skeleton } from '../components/Skeleton'
+import { WEATHER_POINTS, buildCurrentWeatherUrl } from '../lib/weather'
+import { getDeviceDateString, getRecentTripDateByDeviceDate, getTripPhaseByDeviceDate, TRIP_START_DATE } from '../lib/tripCalendar'
 
 const CLOCKS = [
   { key: 'home.taiwan', tz: 'Asia/Taipei'       },
@@ -10,10 +13,11 @@ const CLOCKS = [
   { key: 'home.seoul',  tz: 'Asia/Seoul'        },
 ]
 
-const WEATHER_URLS = {
-  hawaii: 'https://api.open-meteo.com/v1/forecast?latitude=21.3069&longitude=-157.8583&current=temperature_2m,weathercode,windspeed_10m&timezone=Pacific%2FHonolulu',
-  seoul:  'https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current=temperature_2m,weathercode&timezone=Asia%2FSeoul',
-}
+const WEATHER_CARDS = [
+  WEATHER_POINTS.hotelWaikiki,
+  WEATHER_POINTS.hawaii,
+  WEATHER_POINTS.seoul,
+]
 
 function useClock() {
   const [now, setNow] = useState(new Date())
@@ -37,9 +41,10 @@ function fmtDate(date, tz, lang) {
 function useWeather() {
   const [weather, setWeather] = useState({})
   useEffect(() => {
-    Object.entries(WEATHER_URLS).forEach(([key, url]) => {
+    WEATHER_CARDS.forEach((point) => {
+      const url = buildCurrentWeatherUrl(point)
       fetch(url).then(r => r.json()).then(data => {
-        setWeather(w => ({ ...w, [key]: data.current }))
+        setWeather(w => ({ ...w, [point.key]: data.current }))
       }).catch(() => {})
     })
   }, [])
@@ -47,6 +52,7 @@ function useWeather() {
 }
 
 export default function HomePage() {
+  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const now     = useClock()
   const weather = useWeather()
@@ -58,11 +64,25 @@ export default function HomePage() {
     return t(key, { defaultValue: String(code) })
   }
 
-  const tripStart = new Date('2026-07-18')
+  const tripStart = new Date(TRIP_START_DATE)
   const today     = new Date()
   today.setHours(0,0,0,0)
   tripStart.setHours(0,0,0,0)
   const daysLeft = Math.ceil((tripStart - today) / 86400000)
+
+  const deviceDate = getDeviceDateString(today)
+  const recentTripDate = getRecentTripDateByDeviceDate(deviceDate)
+  const tripPhase = getTripPhaseByDeviceDate(deviceDate)
+  const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  const deviceTime = new Intl.DateTimeFormat(lang === 'zh-TW' ? 'zh-TW' : 'en-US', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  }).format(new Date())
+
+  const recentDayTitle = tripPhase === 'before'
+    ? t('home.recentDay.before')
+    : tripPhase === 'during'
+      ? t('home.recentDay.during')
+      : t('home.recentDay.after')
 
   return (
     <div className="px-4 pt-4 pb-36 space-y-4">
@@ -90,13 +110,15 @@ export default function HomePage() {
 
       {/* Weather */}
       <div className="space-y-2">
-        {[
-          { key: 'hawaii', label: t('home.hawaii') },
-          { key: 'seoul',  label: t('home.seoul')  },
-        ].map(({ key, label }) => {
+        {WEATHER_CARDS.map((point) => {
+          const key = point.key
+          const label = t(point.labelKey)
           const w = weather[key]
-          return (
-            <div key={key} className="glass-mini p-4 flex items-center justify-between">
+          const isHotelCard = key === 'hotelWaikiki'
+          const cardClassName = 'glass-mini p-4 w-full flex items-center justify-between text-left'
+
+          const cardContent = (
+            <>
               <div>
                 <p className="text-primary font-medium">{label}</p>
                 {w
@@ -105,7 +127,7 @@ export default function HomePage() {
                 }
               </div>
               {w && (
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1 text-primary">
                     <Thermometer size={16} />
                     <span className="font-medium">{Math.round(w.temperature_2m)}°C</span>
@@ -116,12 +138,53 @@ export default function HomePage() {
                       <span>{Math.round(w.windspeed_10m)} km/h</span>
                     </div>
                   )}
+                  {isHotelCard && <ChevronRight size={16} className="text-secondary" />}
                 </div>
               )}
-            </div>
+            </>
+          )
+
+          return (
+            isHotelCard ? (
+              <button
+                key={key}
+                type="button"
+                className={cardClassName}
+                onClick={() => navigate('/trip/weather/hotel')}
+                aria-label={t('weather.detailsCta')}
+              >
+                {cardContent}
+              </button>
+            ) : (
+              <div key={key} className={cardClassName}>
+                {cardContent}
+              </div>
+            )
           )
         })}
       </div>
+
+      <button
+        type="button"
+        className="glass-card p-4 w-full text-left"
+        style={{ border: '1px solid color-mix(in srgb, var(--accent) 30%, var(--glass-border))' }}
+        onClick={() => navigate(`/trip/activities?date=${recentTripDate}&view=recent`)}
+        aria-label={t('home.viewRecentDay')}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-accent text-xs font-medium">{t('home.viewRecentDay')}</p>
+            <p className="text-primary text-lg font-semibold mt-1">{recentDayTitle}</p>
+            <p className="text-secondary text-sm mt-1">{t('home.recentDay.date', { date: recentTripDate })}</p>
+            <p className="text-secondary text-xs mt-2">
+              {t('home.deviceTime', { time: deviceTime, timezone: deviceTimezone })}
+            </p>
+          </div>
+          <div className="text-accent pt-1">
+            <ChevronRight size={20} />
+          </div>
+        </div>
+      </button>
 
       {/* Trip segments */}
       {trip?.segments && (

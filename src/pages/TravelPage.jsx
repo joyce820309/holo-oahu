@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import FlightsPage from './FlightsPage'
 import HotelsPage  from './HotelsPage'
 import MapPage     from './MapPage'
+import CarRentalPage from './CarRentalPage'
 
 export default function TravelPage() {
   const { i18n } = useTranslation()
@@ -12,6 +13,7 @@ export default function TravelPage() {
   const tabs = [
     { id: 'flights', zh: '機票', en: 'Flights' },
     { id: 'hotels',  zh: '住宿', en: 'Hotels'  },
+    { id: 'cars',    zh: '租車', en: 'Cars'    },
     { id: 'map',     zh: '地圖', en: 'Map'      },
   ]
 
@@ -35,6 +37,7 @@ export default function TravelPage() {
 
       {tab === 'flights' && <FlightsPage />}
       {tab === 'hotels'  && <HotelsPage />}
+      {tab === 'cars'    && <CarRentalPage />}
       {tab === 'map'     && <MapPage />}
     </div>
   )

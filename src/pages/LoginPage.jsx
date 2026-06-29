@@ -6,7 +6,7 @@ import { LogIn, Mail, KeyRound, UserRound, Eye, EyeOff } from 'lucide-react'
 
 export default function LoginPage() {
   const { t } = useTranslation()
-  const { loginWithGoogle, loginWithEmail, signupWithEmail, resetPassword } = useAuth()
+  const { loginWithEmail, signupWithEmail, resetPassword } = useAuth()
   const [mode, setMode] = useState('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -158,16 +158,6 @@ export default function LoginPage() {
           </button>
         )}
 
-        <div className="w-full flex items-center gap-3 text-xs text-secondary">
-          <span className="h-px flex-1" style={{ background: 'var(--mini-border)' }} />
-          {t('auth.or')}
-          <span className="h-px flex-1" style={{ background: 'var(--mini-border)' }} />
-        </div>
-
-        <button className="btn-primary w-full justify-center gap-2" onClick={loginWithGoogle}>
-          <LogIn size={20} />
-          {t('common.login')}
-        </button>
       </div>
     </div>
   )
