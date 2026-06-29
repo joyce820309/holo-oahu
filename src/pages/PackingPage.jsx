@@ -4,7 +4,6 @@ import { Check, PackagePlus, Pencil, Settings2, ShoppingBag, Square, Trash2, X }
 import { Link } from 'react-router-dom'
 import { usePacking } from '../hooks/usePacking'
 import { useShopping } from '../hooks/useShopping'
-import { useAuth } from '../contexts/AuthContext'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { PackingSkeleton } from '../components/Skeleton'
 import toast from 'react-hot-toast'
@@ -151,7 +150,7 @@ function ItemForm({ categories, defaultCategoryId, lang, editingItem, onSave, on
         categoryId: editingItem.categoryId || editingItem.category || defaultCategoryId,
         notes: editingItem.notes || '',
       }
-    : { item: { zh: '', en: '' }, categoryId: defaultCategoryId, notes: '' }
+    : { item: { zh: '護照', en: 'Passport' }, categoryId: defaultCategoryId, notes: '' }
   )
 
   return (
@@ -281,7 +280,6 @@ function ShoppingRow({ item, canEdit, onEdit, onDelete }) {
 
 export default function PackingPage() {
   const { t, i18n } = useTranslation()
-  const { canEditGeneral } = useAuth()
   const { items, categories, loading: loadingPacking, addItem, updateItem, deleteItem } = usePacking()
   const { items: shopItems, loading: loadingShopping, addItem: addShopItem, updateItem: updateShopItem, deleteItem: deleteShopItem } = useShopping()
 
@@ -304,7 +302,7 @@ export default function PackingPage() {
     [categories, items]
   )
 
-  const defaultCategoryId = categories[0]?.id || ''
+  const defaultCategoryId = categories.find(c => c.id === 'documents')?.id || categories[0]?.id || ''
   const checkedCount = items.filter(i => i.checked).length
 
   const openAdd  = () => { setEditingItem(null); setShowItemForm(true) }
@@ -364,25 +362,23 @@ export default function PackingPage() {
             : <p className="text-secondary text-sm">{shopItems.length} 項</p>
           }
         </div>
-        {canEditGeneral && (
-          <div className="flex gap-2">
-            {tab === 'packing' && (
-              <>
-                <Link to="/trip/packing/categories" className="btn-ghost px-3" title="管理類別">
-                  <Settings2 size={17} />
-                </Link>
-                <button className="btn-primary" onClick={openAdd}>
-                  <PackagePlus size={18} />{t('packing.new')}
-                </button>
-              </>
-            )}
-            {tab === 'shopping' && (
-              <button className="btn-primary" onClick={openAddShop}>
-                <ShoppingBag size={18} />新增品項
+        <div className="flex gap-2">
+          {tab === 'packing' && (
+            <>
+              <Link to="/trip/packing/categories" className="btn-ghost px-3" title="管理類別">
+                <Settings2 size={17} />
+              </Link>
+              <button className="btn-primary" onClick={openAdd}>
+                <PackagePlus size={18} />{t('packing.new')}
               </button>
-            )}
-          </div>
-        )}
+            </>
+          )}
+          {tab === 'shopping' && (
+            <button className="btn-primary" onClick={openAddShop}>
+              <ShoppingBag size={18} />新增品項
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -439,7 +435,7 @@ export default function PackingPage() {
                         key={item.id}
                         item={item}
                         lang={lang}
-                        canEdit={canEditGeneral}
+                        canEdit={true}
                         onToggle={() => updateItem(item.id, { checked: !item.checked })}
                         onEdit={() => openEdit(item)}
                         onDelete={() => setDelTarget({ type: 'item', id: item.id })}
@@ -483,7 +479,7 @@ export default function PackingPage() {
               <ShoppingRow
                 key={item.id}
                 item={item}
-                canEdit={canEditGeneral}
+                canEdit={true}
                 onEdit={() => openEditShop(item)}
                 onDelete={() => setDelShop(item)}
               />

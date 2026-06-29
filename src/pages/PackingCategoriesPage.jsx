@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, FolderPlus, Pencil, Trash2, X } from 'lucide-react'
 import { usePacking } from '../hooks/usePacking'
-import { useAuth } from '../contexts/AuthContext'
 import ConfirmDialog from '../components/ConfirmDialog'
 import toast from 'react-hot-toast'
 
@@ -60,8 +59,7 @@ function CategoryForm({ initial, lang, onSave, onCancel }) {
 export default function PackingCategoriesPage() {
   const { i18n } = useTranslation()
   const navigate = useNavigate()
-  const { canEditGeneral } = useAuth()
-  const { categories, items, addCategory, updateCategory, deleteCategory } = usePacking()
+  const { categories, items, loading, addCategory, updateCategory, deleteCategory } = usePacking()
 
   const [showForm, setShowForm]       = useState(false)
   const [editingCat, setEditingCat]   = useState(null)
@@ -103,12 +101,14 @@ export default function PackingCategoriesPage() {
           </button>
           <h2 className="text-primary font-medium text-xl">管理類別</h2>
         </div>
-        {canEditGeneral && (
-          <button className="btn-primary" onClick={openAdd}>
-            <FolderPlus size={17} />新增類別
-          </button>
-        )}
+        <button className="btn-primary" onClick={openAdd}>
+          <FolderPlus size={17} />新增類別
+        </button>
       </div>
+
+      {loading && (
+        <p className="text-secondary text-center py-8">載入中...</p>
+      )}
 
       {showForm && (
         <CategoryForm
@@ -119,7 +119,7 @@ export default function PackingCategoriesPage() {
         />
       )}
 
-      {categories.length === 0 && (
+      {!loading && categories.length === 0 && (
         <p className="text-secondary text-center py-8">尚無類別</p>
       )}
 
@@ -132,16 +132,14 @@ export default function PackingCategoriesPage() {
                 <p className="text-primary font-medium">{bi(cat.name, lang)}</p>
                 <p className="text-secondary text-xs mt-0.5">{count} 個項目</p>
               </div>
-              {canEditGeneral && (
-                <div className="flex gap-1">
-                  <button className="p-2 rounded-lg text-secondary" onClick={() => openEdit(cat)}>
-                    <Pencil size={16} />
-                  </button>
-                  <button className="p-2 rounded-lg text-secondary" onClick={() => requestDelete(cat)}>
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              )}
+              <div className="flex gap-1">
+                <button className="p-2 rounded-lg text-secondary" onClick={() => openEdit(cat)}>
+                  <Pencil size={16} />
+                </button>
+                <button className="p-2 rounded-lg text-secondary" onClick={() => requestDelete(cat)}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           )
         })}

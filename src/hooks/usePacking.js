@@ -4,6 +4,7 @@ import {
   doc, query, orderBy, serverTimestamp, getDocs, setDoc,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { useAuth } from '../contexts/AuthContext'
 
 const TRIP_ID = 'holo-oahu-2026'
 
@@ -17,20 +18,27 @@ const DEFAULT_CATEGORIES = [
 ]
 
 export function usePacking() {
+  const { user } = useAuth()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
+    if (!user?.uid) {
+      setItems([])
+      setCategories([])
+      setLoading(false)
+      return () => { mounted = false }
+    }
 
     async function seedCategories() {
-      const col = collection(db, 'trips', TRIP_ID, 'packingCategories')
+      const col = collection(db, 'trips', TRIP_ID, 'users', user.uid, 'packingCategories')
       const snap = await getDocs(col)
       if (!mounted || !snap.empty) return
 
       await Promise.all(DEFAULT_CATEGORIES.map(category => (
-        setDoc(doc(db, 'trips', TRIP_ID, 'packingCategories', category.id), {
+        setDoc(doc(db, 'trips', TRIP_ID, 'users', user.uid, 'packingCategories', category.id), {
           ...category,
           builtIn: true,
           createdAt: serverTimestamp(),
@@ -40,11 +48,20 @@ export function usePacking() {
 
     seedCategories()
     return () => { mounted = false }
-  }, [])
+  }, [user?.uid])
 
   useEffect(() => {
-    const itemsQuery = query(collection(db, 'trips', TRIP_ID, 'packing'), orderBy('createdAt'))
-    const categoriesQuery = query(collection(db, 'trips', TRIP_ID, 'packingCategories'), orderBy('order'))
+    if (!user?.uid) {
+      setItems([])
+      setCategories([])
+      setLoading(false)
+      return () => {}
+    }
+
+    setLoading(true)
+
+    const itemsQuery = query(collection(db, 'trips', TRIP_ID, 'users', user.uid, 'packing'), orderBy('createdAt'))
+    const categoriesQuery = query(collection(db, 'trips', TRIP_ID, 'users', user.uid, 'packingCategories'), orderBy('order'))
 
     let itemsReady = false
     let categoriesReady = false
@@ -75,19 +92,37 @@ export function usePacking() {
       unsubItems()
       unsubCategories()
     }
-  }, [])
+  }, [user?.uid])
 
-  const addItem = data => addDoc(collection(db, 'trips', TRIP_ID, 'packing'), { ...data, createdAt: serverTimestamp() })
-  const updateItem = (id, data) => updateDoc(doc(db, 'trips', TRIP_ID, 'packing', id), data)
-  const deleteItem = id => deleteDoc(doc(db, 'trips', TRIP_ID, 'packing', id))
+  const addItem = data => {
+    if (!user?.uid) return Promise.reject(new Error('Not authenticated'))
+    return addDoc(collection(db, 'trips', TRIP_ID, 'users', user.uid, 'packing'), { ...data, createdAt: serverTimestamp() })
+  }
+  const updateItem = (id, data) => {
+    if (!user?.uid) return Promise.reject(new Error('Not authenticated'))
+    return updateDoc(doc(db, 'trips', TRIP_ID, 'users', user.uid, 'packing', id), data)
+  }
+  const deleteItem = id => {
+    if (!user?.uid) return Promise.reject(new Error('Not authenticated'))
+    return deleteDoc(doc(db, 'trips', TRIP_ID, 'users', user.uid, 'packing', id))
+  }
 
-  const addCategory = data => addDoc(collection(db, 'trips', TRIP_ID, 'packingCategories'), {
-    ...data,
-    builtIn: false,
-    createdAt: serverTimestamp(),
-  })
-  const updateCategory = (id, data) => updateDoc(doc(db, 'trips', TRIP_ID, 'packingCategories', id), data)
-  const deleteCategory = id => deleteDoc(doc(db, 'trips', TRIP_ID, 'packingCategories', id))
+  const addCategory = data => {
+    if (!user?.uid) return Promise.reject(new Error('Not authenticated'))
+    return addDoc(collection(db, 'trips', TRIP_ID, 'users', user.uid, 'packingCategories'), {
+      ...data,
+      builtIn: false,
+      createdAt: serverTimestamp(),
+    })
+  }
+  const updateCategory = (id, data) => {
+    if (!user?.uid) return Promise.reject(new Error('Not authenticated'))
+    return updateDoc(doc(db, 'trips', TRIP_ID, 'users', user.uid, 'packingCategories', id), data)
+  }
+  const deleteCategory = id => {
+    if (!user?.uid) return Promise.reject(new Error('Not authenticated'))
+    return deleteDoc(doc(db, 'trips', TRIP_ID, 'users', user.uid, 'packingCategories', id))
+  }
 
   return {
     items,
