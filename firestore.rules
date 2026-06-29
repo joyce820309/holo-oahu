@@ -1,0 +1,83 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // If /users doc doesn't exist yet (brand-new user before resolveRole writes it),
+    // default to 'editor' so Firestore calls inside resolveRole/syncTripMember succeed.
+    function userRole() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'editor')
+        : 'editor';
+    }
+
+    function canEdit() {
+      return isSignedIn() && userRole() in ['owner', 'admin', 'editor'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() in ['owner', 'admin'];
+    }
+
+    function isOwner() {
+      return isSignedIn() && userRole() == 'owner';
+    }
+
+    match /users/{uid} {
+      allow read:  if isSignedIn();
+      allow write: if request.auth.uid == uid
+                   || (isSignedIn() && userRole() == 'owner');
+
+      match /settings/{docId} {
+        allow read, write: if request.auth.uid == uid;
+      }
+      match /reminders/{docId} {
+        allow read, write: if request.auth.uid == uid;
+      }
+    }
+
+    match /trips/{tripId} {
+      allow read:   if isSignedIn();
+      allow create: if isSignedIn();
+      // editors can update trip doc (needed for syncTripMember to add themselves to members[])
+      allow update: if canEdit();
+      allow delete: if isOwner();
+
+      match /flights/{docId} {
+        allow read:  if isSignedIn();
+        allow write: if canEdit();
+      }
+      match /hotels/{docId} {
+        allow read:  if isSignedIn();
+        allow write: if canEdit();
+      }
+      match /activities/{docId} {
+        allow read:  if isSignedIn();
+        allow write: if canEdit();
+      }
+      match /expenses/{docId} {
+        allow read:  if isSignedIn();
+        allow write: if canEdit();
+      }
+      match /packing/{docId} {
+        allow read:  if isSignedIn();
+        allow write: if canEdit();
+      }
+      match /packingCategories/{docId} {
+        allow read:  if isSignedIn();
+        allow write: if canEdit();
+      }
+      match /emergencyContacts/{docId} {
+        allow read:  if isSignedIn();
+        allow write: if isAdmin();
+      }
+      match /{subcollection}/{docId} {
+        allow read, write: if isSignedIn();
+      }
+    }
+  }
+}

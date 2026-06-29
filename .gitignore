@@ -30,3 +30,8 @@ public/firebase-messaging-sw.js
 *.sw?
 
 .vercel
+.claude/
+.skills/
+holo-cursor-prompt.md
+functions/node_modules
+holo/
