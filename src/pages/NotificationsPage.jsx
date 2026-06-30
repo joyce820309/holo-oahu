@@ -187,29 +187,12 @@ function ReminderDatePicker({ value, onChange, lang }) {
   )
 }
 
-function ReminderTimeField({ value, onChange, lang }) {
-  const selected = parseNotifyDate(value)
-  const [hourInput, setHourInput] = useState(() => selected ? pad(selected.getHours()) : '')
-  const [minuteInput, setMinuteInput] = useState(() => selected ? pad(selected.getMinutes()) : '')
+function ReminderTimeField({ hour, minute, onChange, lang }) {
   const isZh = lang === 'zh-TW'
 
-  const commitTime = (hourStr, minuteStr) => {
-    if (hourStr === '' && minuteStr === '') return
-    const h = Math.min(23, Math.max(0, Number(hourStr) || 0))
-    const m = Math.min(59, Math.max(0, Number(minuteStr) || 0))
-    const next = selected ? new Date(selected) : new Date()
-    next.setHours(h, m, 0, 0)
-    setHourInput(pad(h))
-    setMinuteInput(pad(m))
-    onChange(toLocalInputValue(next))
-  }
-
-  const handleHourInput = (raw) => {
-    setHourInput(raw.replace(/\D/g, '').slice(0, 2))
-  }
-
-  const handleMinuteInput = (raw) => {
-    setMinuteInput(raw.replace(/\D/g, '').slice(0, 2))
+  const clampOnBlur = (raw, max) => {
+    if (raw === '') return ''
+    return pad(Math.min(max, Math.max(0, Number(raw) || 0)))
   }
 
   return (
@@ -222,9 +205,9 @@ function ReminderTimeField({ value, onChange, lang }) {
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={2}
-          value={hourInput}
-          onChange={e => handleHourInput(e.target.value)}
-          onBlur={e => commitTime(e.target.value, minuteInput)}
+          value={hour}
+          onChange={e => onChange({ hour: e.target.value.replace(/\D/g, '').slice(0, 2), minute })}
+          onBlur={e => onChange({ hour: clampOnBlur(e.target.value, 23), minute })}
           className="rounded-lg py-1 text-center text-sm outline-none"
           style={{ width: 40, background: 'rgba(255,255,255,0.9)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
         />
@@ -234,9 +217,9 @@ function ReminderTimeField({ value, onChange, lang }) {
           inputMode="numeric"
           pattern="[0-9]*"
           maxLength={2}
-          value={minuteInput}
-          onChange={e => handleMinuteInput(e.target.value)}
-          onBlur={e => commitTime(hourInput, e.target.value)}
+          value={minute}
+          onChange={e => onChange({ hour, minute: e.target.value.replace(/\D/g, '').slice(0, 2) })}
+          onBlur={e => onChange({ hour, minute: clampOnBlur(e.target.value, 59) })}
           className="rounded-lg py-1 text-center text-sm outline-none"
           style={{ width: 40, background: 'rgba(255,255,255,0.9)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
         />
@@ -254,6 +237,7 @@ export default function NotificationsPage() {
     permissionStatus,
     toggleEnabled,
     toggleCategory,
+    requestPermission,
     addReminder,
     updateReminder,
     deleteReminder,
@@ -261,17 +245,32 @@ export default function NotificationsPage() {
 
   const [showForm, setShowForm] = useState(false)
   const [delId, setDelId] = useState(null)
-  const [form, setForm] = useState({ title: '', notifyAt: '' })
+  const [form, setForm] = useState({ title: '', date: '', hour: '', minute: '' })
 
   const isUnsupported = permissionStatus === 'unsupported'
   const isDenied = permissionStatus === 'denied'
 
   const handleAddReminder = async () => {
     if (!form.title.trim()) { toast.error(t('notifications.reminder.titleRequired')); return }
-    if (!form.notifyAt) { toast.error(t('notifications.reminder.timeRequired')); return }
+    if (!form.date) { toast.error('請選擇日期'); return }
+    if (form.hour === '' || form.minute === '') { toast.error('請輸入完整時間'); return }
+    if (isUnsupported) { toast.error('此裝置不支援推播通知'); return }
+    if (!prefs.fcmToken) {
+      if (isDenied) {
+        toast.error('通知權限已被拒絕，請至系統設定開啟後再試一次')
+        return
+      }
+      const result = await requestPermission()
+      if (result !== 'granted') {
+        toast.error('需要通知權限才能收到提醒')
+        return
+      }
+    }
+    const next = new Date(form.date)
+    next.setHours(Number(form.hour), Number(form.minute), 0, 0)
     try {
-      await addReminder({ title: form.title.trim(), notifyAt: form.notifyAt })
-      setForm({ title: '', notifyAt: '' })
+      await addReminder({ title: form.title.trim(), notifyAt: toLocalInputValue(next) })
+      setForm({ title: '', date: '', hour: '', minute: '' })
       setShowForm(false)
       toast.success(t('notifications.reminder.added'))
     } catch {
@@ -419,7 +418,7 @@ export default function NotificationsPage() {
           <div className="glass-mini p-4 mb-3 space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-primary text-sm font-medium">{t('notifications.reminder.new')}</p>
-              <button onClick={() => setShowForm(false)} className="text-secondary">
+              <button onClick={() => { setShowForm(false); setForm({ title: '', date: '', hour: '', minute: '' }) }} className="text-secondary">
                 <X size={18} />
               </button>
             </div>
@@ -433,13 +432,14 @@ export default function NotificationsPage() {
             />
             <div className="relative grid grid-cols-[1fr_auto] gap-2 items-start">
               <ReminderDatePicker
-                value={form.notifyAt}
-                onChange={notifyAt => setForm(f => ({ ...f, notifyAt }))}
+                value={form.date}
+                onChange={date => setForm(f => ({ ...f, date }))}
                 lang={i18n.language}
               />
               <ReminderTimeField
-                value={form.notifyAt}
-                onChange={notifyAt => setForm(f => ({ ...f, notifyAt }))}
+                hour={form.hour}
+                minute={form.minute}
+                onChange={({ hour, minute }) => setForm(f => ({ ...f, hour, minute }))}
                 lang={i18n.language}
               />
             </div>

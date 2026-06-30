@@ -64,11 +64,25 @@ function dayLabel(dateStr) {
   return { n: diff + 1, d }
 }
 
-// ── Context menu (⋮) — portal-based to avoid overflow clipping ───────────
+// ── Context menu (⋮) — popover on desktop, bottom sheet on mobile ────────
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const handler = e => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
+
 function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
   const [open, setOpen] = useState(false)
   const [pos, setPos]   = useState({ top: 0, right: 0 })
   const btnRef = useRef(null)
+  const isMobile = useIsMobile()
 
   const openMenu = e => {
     e.stopPropagation()
@@ -78,7 +92,7 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
   }
 
   useEffect(() => {
-    if (!open) return
+    if (!open || isMobile) return
     const tid = setTimeout(() => {
       const close = e => {
         if (!btnRef.current?.contains(e.target)) setOpen(false)
@@ -87,7 +101,13 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
       return () => document.removeEventListener('click', close)
     }, 0)
     return () => clearTimeout(tid)
-  }, [open])
+  }, [open, isMobile])
+
+  useEffect(() => {
+    if (!open || !isMobile) return
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [open, isMobile])
 
   const items = [
     { label: '查看詳情', Icon: MapPinned,       action: onView,    show: !!onView    },
@@ -110,7 +130,45 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
         <EllipsisVertical size={16} />
       </button>
 
-      {open && createPortal(
+      {open && isMobile && createPortal(
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.32)' }}
+          onClick={e => { e.stopPropagation(); setOpen(false) }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'absolute', left: 0, right: 0, bottom: 0,
+              background: 'var(--glass-bg)', backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderTopLeftRadius: 20, borderTopRightRadius: 20,
+              boxShadow: '0 -8px 24px rgba(0,0,0,0.18)',
+              paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+              animation: 'sheet-up 0.22s ease-out',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--mini-border)' }} />
+            </div>
+            {items.map(({ label, Icon, action, danger }) => (
+              <button
+                key={label}
+                onClick={e => { e.stopPropagation(); setOpen(false); action() }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '16px 20px', fontSize: 16, textAlign: 'left', background: 'none', border: 'none',
+                  color: danger ? '#e05555' : 'var(--text-primary)', cursor: 'pointer',
+                }}
+              >
+                <Icon size={19} />{label}
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {open && !isMobile && createPortal(
         <div
           style={{
             position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999,
