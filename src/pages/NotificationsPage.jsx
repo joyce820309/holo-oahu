@@ -90,7 +90,7 @@ function ReminderDatePicker({ value, onChange, lang }) {
     : isZh ? '選擇日期' : 'Select date'
 
   return (
-    <div className="relative space-y-1">
+    <div className="space-y-1">
       <label className="text-secondary text-sm">{isZh ? '日期' : 'Date'}</label>
       <button
         type="button"
@@ -116,9 +116,9 @@ function ReminderDatePicker({ value, onChange, lang }) {
 
       {open && (
         <div
-          className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl"
+          className="absolute left-0 right-0 bottom-full z-50 mb-2 rounded-2xl"
           style={{
-            background: 'rgba(255,255,255,0.78)',
+            background: 'rgba(255,255,255,0.97)',
             border: '0.5px solid var(--glass-border)',
             boxShadow: '0 14px 30px rgba(30,61,79,0.16)',
             backdropFilter: 'blur(18px)',
@@ -189,11 +189,12 @@ function ReminderDatePicker({ value, onChange, lang }) {
 
 function ReminderTimeField({ value, onChange, lang }) {
   const selected = parseNotifyDate(value)
-  const [hourInput, setHourInput] = useState(() => pad((selected || new Date()).getHours()))
-  const [minuteInput, setMinuteInput] = useState(() => pad((selected || new Date()).getMinutes()))
+  const [hourInput, setHourInput] = useState(() => selected ? pad(selected.getHours()) : '')
+  const [minuteInput, setMinuteInput] = useState(() => selected ? pad(selected.getMinutes()) : '')
   const isZh = lang === 'zh-TW'
 
   const commitTime = (hourStr, minuteStr) => {
+    if (hourStr === '' && minuteStr === '') return
     const h = Math.min(23, Math.max(0, Number(hourStr) || 0))
     const m = Math.min(59, Math.max(0, Number(minuteStr) || 0))
     const next = selected ? new Date(selected) : new Date()
@@ -204,15 +205,11 @@ function ReminderTimeField({ value, onChange, lang }) {
   }
 
   const handleHourInput = (raw) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 2)
-    setHourInput(digits)
-    if (digits !== '' && Number(digits) <= 23) commitTime(digits, minuteInput)
+    setHourInput(raw.replace(/\D/g, '').slice(0, 2))
   }
 
   const handleMinuteInput = (raw) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 2)
-    setMinuteInput(digits)
-    if (digits !== '' && Number(digits) <= 59) commitTime(hourInput, digits)
+    setMinuteInput(raw.replace(/\D/g, '').slice(0, 2))
   }
 
   return (
@@ -434,7 +431,7 @@ export default function NotificationsPage() {
               className="w-full px-3 py-2.5 rounded-xl text-sm"
               style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
             />
-            <div className="grid grid-cols-[1fr_auto] gap-2 items-start">
+            <div className="relative grid grid-cols-[1fr_auto] gap-2 items-start">
               <ReminderDatePicker
                 value={form.notifyAt}
                 onChange={notifyAt => setForm(f => ({ ...f, notifyAt }))}

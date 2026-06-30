@@ -196,7 +196,6 @@ function MinuteCombo({ value, onChange }) {
             const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 2)
             setInputVal(digitsOnly)
           }}
-          onFocus={() => setOpen(true)}
           onBlur={e => { if (!wrapRef.current?.contains(e.relatedTarget)) commit(e.target.value) }}
           onKeyDown={e => { if (e.key === 'Enter') commit(e.target.value); if (e.key === 'Escape') setOpen(false) }}
           placeholder="分"
@@ -282,7 +281,6 @@ function HourCombo({ value, onChange }) {
             const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 2)
             setInputVal(digitsOnly)
           }}
-          onFocus={() => setOpen(true)}
           onBlur={e => { if (!wrapRef.current?.contains(e.relatedTarget)) commit(e.target.value) }}
           onKeyDown={e => { if (e.key === 'Enter') commit(e.currentTarget.value); if (e.key === 'Escape') setOpen(false) }}
           placeholder="時"
