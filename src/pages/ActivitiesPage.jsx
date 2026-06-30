@@ -6,7 +6,7 @@ import {
   Plus, UtensilsCrossed, Ticket, Waves, Star, MapPin, Trash2, Pencil,
   Car, Bus, Footprints, Truck, EllipsisVertical, MapPinned,
   Plane, ArrowLeftRight, RotateCcw, GripVertical, Check,
-  ArrowUpCircle, ArrowDownCircle, Navigation,
+  ArrowUpCircle, ArrowDownCircle, Navigation, ExternalLink,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
@@ -17,8 +17,10 @@ import {
   useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import toast from 'react-hot-toast'
 import { useActivities } from '../hooks/useActivities'
 import ConfirmDialog from '../components/ConfirmDialog'
+import NoteContent from '../components/NoteContent'
 import { ActivitiesSkeleton } from '../components/Skeleton'
 import { TRIP_START_DATE, TRIP_END_DATE, getRecentTripDateByDeviceDate, getDeviceDateString } from '../lib/tripCalendar'
 
@@ -45,6 +47,12 @@ function bi(field, lang) {
   if (!field) return ''
   if (typeof field === 'string') return field
   return field[lang === 'zh-TW' ? 'zh' : 'en'] || field.zh || field.en || ''
+}
+
+function normalizeExternalLink(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`
 }
 
 // Day N label from date string
@@ -214,18 +222,39 @@ function SortableItem({ id, children }) {
 }
 
 // ── Activity card ──────────────────────────────────────────────────────────
-function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote }) {
+function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote, showNoteContent = false }) {
   const isFlight = !!activity.flightId
   const Icon     = isFlight ? Plane : (TYPE_ICONS[activity.type] || MapPin)
   const crossDay = activity.startTime && activity.endTime && activity.endTime < activity.startTime
+  const noteText = bi(activity.note, lang).trim()
+  const externalLink = normalizeExternalLink(activity.link || activity.mapLink)
 
   const flightStyle = isFlight ? {
     background: 'color-mix(in srgb, var(--accent) 6%, var(--glass-bg))',
     border: '1px dashed color-mix(in srgb, var(--accent) 40%, transparent)',
   } : {}
 
+  const cardClickable = !editMode && !!onView
+  const cardInteractionProps = cardClickable ? {
+    onClick: e => { e.stopPropagation(); onView() },
+    onKeyDown: e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        e.stopPropagation()
+        onView()
+      }
+    },
+    role: 'button',
+    tabIndex: 0,
+    'aria-label': `查看 ${bi(activity.title, lang)} 詳情`,
+  } : {}
+
   return (
-    <div className="glass-card p-4" style={{ ...flightStyle }}>
+    <div
+      className="glass-card p-4"
+      style={{ ...flightStyle, cursor: cardClickable ? 'pointer' : 'default' }}
+      {...cardInteractionProps}
+    >
       <div className="flex items-start gap-3">
         {editMode && (
           <button
@@ -249,30 +278,83 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
             onMouseLeave={e => { if (!editMode && onView) e.currentTarget.style.color = '' }}
             onClick={e => { if (!editMode && onView) { e.stopPropagation(); onView() } }}
           >{bi(activity.title, lang)}</p>
-          {activity.startTime && (
-            <p className="text-secondary text-xs mt-0.5">
-              {activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}
-              {crossDay && <span style={{ marginLeft: 4, color: 'var(--accent)', fontWeight: 500 }}>+1</span>}
-            </p>
-          )}
           {!editMode && bi(activity.address, lang) && (() => {
             const displayName = bi(activity.location, lang) || bi(activity.address, lang)
             const mapTarget = activity.lat && activity.lng
               ? `${activity.lat},${activity.lng}`
               : encodeURIComponent(bi(activity.address, lang))
             return (
-              <button
-                className="flex items-center gap-1 mt-1.5"
-                style={{ color: 'var(--accent)', fontSize: 12, maxWidth: '100%' }}
-                onClick={e => { e.stopPropagation(); window.open(`https://maps.google.com/?q=${mapTarget}`) }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
-                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-              >
-                <Navigation size={11} style={{ flexShrink: 0 }} />
-                <span className="truncate">{displayName}</span>
-              </button>
+              <div className="flex items-center gap-3 mt-1.5 min-w-0">
+                {activity.startTime && (
+                  <span className="text-secondary text-xs whitespace-nowrap">
+                    {activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}
+                    {crossDay && <span style={{ marginLeft: 4, color: 'var(--accent)', fontWeight: 500 }}>+1</span>}
+                  </span>
+                )}
+                {bi(activity.address, lang) && (
+                  <button
+                    className="flex items-center gap-1 min-w-0"
+                    style={{ color: 'var(--accent)', fontSize: 12, maxWidth: '100%' }}
+                    onClick={e => { e.stopPropagation(); window.open(`https://maps.google.com/?q=${mapTarget}`) }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    <Navigation size={11} style={{ flexShrink: 0 }} />
+                    <span className="truncate">{displayName}</span>
+                  </button>
+                )}
+              </div>
             )
           })()}
+          {!editMode && activity.startTime && !bi(activity.address, lang) && (
+            <p className="text-secondary text-xs mt-1.5">
+              {activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}
+              {crossDay && <span style={{ marginLeft: 4, color: 'var(--accent)', fontWeight: 500 }}>+1</span>}
+            </p>
+          )}
+          {!editMode && externalLink && (
+            <a
+              href={externalLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 mt-1.5"
+              style={{ color: 'var(--accent)', fontSize: 12 }}
+              onClick={e => e.stopPropagation()}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <ExternalLink size={12} style={{ flexShrink: 0 }} />
+              {lang === 'zh-TW' ? '相關連結' : 'Link'}
+            </a>
+          )}
+          {!editMode && noteText && (showNoteContent ? (
+            <div
+              className="mt-2 px-2.5 py-1.5"
+              style={{
+                fontSize: 11,
+                lineHeight: 1.35,
+                color: 'var(--text-secondary)',
+                background: 'color-mix(in srgb, var(--accent) 12%, var(--mini-bg))',
+                borderRadius: 12,
+              }}
+            >
+              <NoteContent text={noteText} className="text-secondary text-xs leading-relaxed" />
+            </div>
+          ) : (
+            <span
+              className="inline-flex items-center mt-2 px-2 py-0.5 rounded-full"
+              style={{
+                fontSize: 11,
+                lineHeight: 1.2,
+                color: 'var(--text-secondary)',
+                background: 'var(--mini-bg)',
+                border: '0.5px solid var(--mini-border)',
+                maxWidth: '100%',
+              }}
+            >
+              {lang === 'zh-TW' ? '備註' : 'Note'}
+            </span>
+          ))}
         </div>
         {!editMode && (
           <CardMenu onView={onView} onEdit={onEdit} onDelete={onDelete} onPromote={onPromote} onDemote={onDemote} />
@@ -325,7 +407,7 @@ function FlightGroupBox({ children, landingTime }) {
 }
 
 // ── Date group ─────────────────────────────────────────────────────────────
-function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder, onDemote }) {
+function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder, onDemote, showNoteContent }) {
   const { t } = useTranslation()
   const [localItems, setLocalItems] = useState(items)
   const [activeId, setActiveId] = useState(null)
@@ -444,6 +526,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                         </SortableItem>
                       ) : (
                         <ActivityCard activity={activity} lang={lang} editMode={false}
+                          showNoteContent={showNoteContent}
                           onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
                           {...cardActions}
                         />
@@ -504,7 +587,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <ActivityCard activity={activity} lang={lang} editMode={false} {...cardActions} />
+                          <ActivityCard activity={activity} lang={lang} editMode={false} showNoteContent={showNoteContent} {...cardActions} />
                         </div>
                       </div>
                       {idx < flightItems.length - 1 && <div style={{ height: 8 }} />}
@@ -581,6 +664,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                     </div>
                     <div className="flex-1 min-w-0">
                       <ActivityCard activity={activity} lang={lang} editMode={false}
+                        showNoteContent={showNoteContent}
                         onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
                         {...cardActions}
                       />
@@ -906,6 +990,7 @@ export default function ActivitiesPage() {
               lang={lang}
               navigate={navigate}
               setDelId={setDelId}
+              showNoteContent={activeTab !== 'all'}
               onReorder={(reordered) => handleReorder(date, reordered)}
               onDemote={demote}
             />
@@ -946,7 +1031,15 @@ export default function ActivitiesPage() {
 
       {delId && (
         <ConfirmDialog
-          onConfirm={() => { deleteActivity(delId); setDelId(null) }}
+          onConfirm={async () => {
+            try {
+              await deleteActivity(delId)
+            } catch {
+              toast.error('刪除失敗')
+            } finally {
+              setDelId(null)
+            }
+          }}
           onCancel={() => setDelId(null)}
         />
       )}

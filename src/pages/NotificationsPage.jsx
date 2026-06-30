@@ -51,8 +51,6 @@ function ReminderDatePicker({ value, onChange, lang }) {
   const [viewDate, setViewDate] = useState(() => selected || new Date())
   const isZh = lang === 'zh-TW'
   const weekLabels = isZh ? ['日', '一', '二', '三', '四', '五', '六'] : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-  const hours = Array.from({ length: 24 }, (_, i) => pad(i))
-  const minutes = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55']
 
   const calendarDays = useMemo(() => {
     const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1)
@@ -70,14 +68,7 @@ function ReminderDatePicker({ value, onChange, lang }) {
     const next = selected ? new Date(selected) : new Date()
     next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate())
     onChange(toLocalInputValue(next))
-  }
-
-  const setTimePart = (part, nextValue) => {
-    const next = selected ? new Date(selected) : new Date()
-    if (part === 'hour') next.setHours(Number(nextValue))
-    else next.setMinutes(Number(nextValue))
-    next.setSeconds(0, 0)
-    onChange(toLocalInputValue(next))
+    setOpen(false)
   }
 
   const shiftMonth = (amount) => {
@@ -87,7 +78,7 @@ function ReminderDatePicker({ value, onChange, lang }) {
   const chooseToday = () => {
     const now = new Date()
     setViewDate(now)
-    onChange(toLocalInputValue(now))
+    setDatePart(now)
   }
 
   const displayValue = selected
@@ -95,13 +86,12 @@ function ReminderDatePicker({ value, onChange, lang }) {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
       })
-    : isZh ? '選擇日期與時間' : 'Select date and time'
+    : isZh ? '選擇日期' : 'Select date'
 
   return (
-    <div className="relative">
+    <div className="relative space-y-1">
+      <label className="text-secondary text-sm">{isZh ? '日期' : 'Date'}</label>
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
@@ -126,7 +116,7 @@ function ReminderDatePicker({ value, onChange, lang }) {
 
       {open && (
         <div
-          className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl"
+          className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl"
           style={{
             background: 'rgba(255,255,255,0.78)',
             border: '0.5px solid var(--glass-border)',
@@ -135,30 +125,24 @@ function ReminderDatePicker({ value, onChange, lang }) {
             WebkitBackdropFilter: 'blur(18px)',
           }}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--mini-border)' }}>
+          <div className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: 'var(--mini-border)' }}>
             <button type="button" onClick={() => shiftMonth(-1)} className="p-1.5 rounded-lg text-secondary">
               <ChevronLeft size={17} />
             </button>
             <div className="flex items-center gap-4 text-primary text-sm font-semibold">
-              <span className="inline-flex items-center gap-1">
-                {viewDate.getFullYear()}{isZh ? '年' : ''}
-                <ChevronDown size={13} className="text-secondary" />
-              </span>
-              <span className="inline-flex items-center gap-1">
-                {isZh ? `${viewDate.getMonth() + 1}月` : viewDate.toLocaleString('en-US', { month: 'short' })}
-                <ChevronDown size={13} className="text-secondary" />
-              </span>
+              <span>{viewDate.getFullYear()}{isZh ? '年' : ''}</span>
+              <span>{isZh ? `${viewDate.getMonth() + 1}月` : viewDate.toLocaleString('en-US', { month: 'short' })}</span>
             </div>
             <button type="button" onClick={() => shiftMonth(1)} className="p-1.5 rounded-lg text-secondary">
               <ChevronRight size={17} />
             </button>
           </div>
 
-          <div className="px-4 pt-3">
-            <div className="grid grid-cols-7 gap-1 text-center text-xs text-secondary mb-2">
+          <div className="px-4 pt-2">
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-secondary mb-1">
               {weekLabels.map(label => <span key={label}>{label}</span>)}
             </div>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-0.5">
               {calendarDays.map(date => {
                 const isCurrentMonth = date.getMonth() === viewDate.getMonth()
                 const isSelected = selected
@@ -172,7 +156,7 @@ function ReminderDatePicker({ value, onChange, lang }) {
                     key={date.toISOString()}
                     type="button"
                     onClick={() => setDatePart(date)}
-                    className="h-9 rounded-full text-sm transition-colors"
+                    className="h-8 rounded-full text-sm transition-colors"
                     style={{
                       color: isSelected ? 'white' : isCurrentMonth ? 'var(--text-primary)' : 'var(--text-secondary)',
                       background: isSelected ? 'var(--accent)' : 'transparent',
@@ -187,32 +171,11 @@ function ReminderDatePicker({ value, onChange, lang }) {
             </div>
           </div>
 
-          <div className="mx-4 my-3 border-t" style={{ borderColor: 'var(--mini-border)' }} />
-
-          <div className="px-4 pb-4 space-y-3">
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-              <select
-                value={selected ? pad(selected.getHours()) : pad(new Date().getHours())}
-                onChange={e => setTimePart('hour', e.target.value)}
-                className="rounded-xl px-3 py-2 text-center text-sm"
-                style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
-              >
-                {hours.map(hour => <option key={hour} value={hour}>{hour}</option>)}
-              </select>
-              <span className="text-secondary font-semibold">:</span>
-              <select
-                value={selected ? pad(selected.getMinutes()) : '00'}
-                onChange={e => setTimePart('minute', e.target.value)}
-                className="rounded-xl px-3 py-2 text-center text-sm"
-                style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
-              >
-                {minutes.map(minute => <option key={minute} value={minute}>{minute}</option>)}
-              </select>
-            </div>
+          <div className="px-4 py-2.5">
             <button
               type="button"
               onClick={chooseToday}
-              className="w-full py-2 text-sm font-medium"
+              className="w-full py-1.5 text-sm font-medium"
               style={{ color: 'var(--accent)' }}
             >
               {isZh ? '今天' : 'Today'}
@@ -220,6 +183,67 @@ function ReminderDatePicker({ value, onChange, lang }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ReminderTimeField({ value, onChange, lang }) {
+  const selected = parseNotifyDate(value)
+  const [hourInput, setHourInput] = useState(() => pad((selected || new Date()).getHours()))
+  const [minuteInput, setMinuteInput] = useState(() => pad((selected || new Date()).getMinutes()))
+  const isZh = lang === 'zh-TW'
+
+  const commitTime = (hourStr, minuteStr) => {
+    const h = Math.min(23, Math.max(0, Number(hourStr) || 0))
+    const m = Math.min(59, Math.max(0, Number(minuteStr) || 0))
+    const next = selected ? new Date(selected) : new Date()
+    next.setHours(h, m, 0, 0)
+    setHourInput(pad(h))
+    setMinuteInput(pad(m))
+    onChange(toLocalInputValue(next))
+  }
+
+  const handleHourInput = (raw) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 2)
+    setHourInput(digits)
+    if (digits !== '' && Number(digits) <= 23) commitTime(digits, minuteInput)
+  }
+
+  const handleMinuteInput = (raw) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 2)
+    setMinuteInput(digits)
+    if (digits !== '' && Number(digits) <= 59) commitTime(hourInput, digits)
+  }
+
+  return (
+    <div className="space-y-1">
+      <label className="text-secondary text-sm">{isZh ? '時間' : 'Time'}</label>
+      <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.38)', border: '0.5px solid var(--mini-border)' }}>
+        <Clock size={15} className="text-secondary flex-shrink-0" />
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={2}
+          value={hourInput}
+          onChange={e => handleHourInput(e.target.value)}
+          onBlur={e => commitTime(e.target.value, minuteInput)}
+          className="rounded-lg py-1 text-center text-sm outline-none"
+          style={{ width: 40, background: 'rgba(255,255,255,0.9)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
+        />
+        <span className="text-secondary font-semibold">:</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={2}
+          value={minuteInput}
+          onChange={e => handleMinuteInput(e.target.value)}
+          onBlur={e => commitTime(hourInput, e.target.value)}
+          className="rounded-lg py-1 text-center text-sm outline-none"
+          style={{ width: 40, background: 'rgba(255,255,255,0.9)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
+        />
+      </div>
     </div>
   )
 }
@@ -342,6 +366,24 @@ export default function NotificationsPage() {
         </p>
       </div>
 
+      {/* Diagnostics — helps debug why push notifications aren't arriving */}
+      <div className="glass-mini p-3 mb-4 space-y-1">
+        <p className="text-secondary text-xs font-medium mb-1">診斷資訊</p>
+        <p className="text-secondary text-xs">瀏覽器權限：{permissionStatus}</p>
+        <p className="text-secondary text-xs">
+          已註冊裝置 token 數：{(prefs.fcmTokens?.length ?? (prefs.fcmToken ? 1 : 0))}
+        </p>
+        <p className="text-secondary text-xs break-all">
+          目前 token：{prefs.fcmToken ? `${prefs.fcmToken.slice(0, 16)}…` : '無'}
+        </p>
+        {reminders.length > 0 && (
+          <p className="text-secondary text-xs">
+            最近一筆提醒狀態：{reminders[0].status || 'pending'}
+            {reminders[0].sentAt && `（已於 ${new Date(reminders[0].sentAt.seconds ? reminders[0].sentAt.seconds * 1000 : reminders[0].sentAt).toLocaleString()} 發送）`}
+          </p>
+        )}
+      </div>
+
       {/* Category toggles */}
       <div className="glass-card p-4 mb-4">
         <p className="text-primary font-medium mb-3">{t('notifications.categories')}</p>
@@ -392,11 +434,18 @@ export default function NotificationsPage() {
               className="w-full px-3 py-2.5 rounded-xl text-sm"
               style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)', color: 'var(--text-primary)' }}
             />
-            <ReminderDatePicker
-              value={form.notifyAt}
-              onChange={notifyAt => setForm(f => ({ ...f, notifyAt }))}
-              lang={i18n.language}
-            />
+            <div className="grid grid-cols-[1fr_auto] gap-2 items-start">
+              <ReminderDatePicker
+                value={form.notifyAt}
+                onChange={notifyAt => setForm(f => ({ ...f, notifyAt }))}
+                lang={i18n.language}
+              />
+              <ReminderTimeField
+                value={form.notifyAt}
+                onChange={notifyAt => setForm(f => ({ ...f, notifyAt }))}
+                lang={i18n.language}
+              />
+            </div>
             <button className="btn-primary w-full justify-center" onClick={handleAddReminder}>
               {t('common.save')}
             </button>

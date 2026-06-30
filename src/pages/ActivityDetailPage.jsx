@@ -29,6 +29,12 @@ function bi(field, lang) {
   return field[lang === 'zh-TW' ? 'zh' : 'en'] || field.zh || field.en || ''
 }
 
+function normalizeExternalLink(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`
+}
+
 export default function ActivityDetailPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -50,6 +56,7 @@ export default function ActivityDetailPage() {
   const Icon = TYPE_ICONS[activity.type] || MapPin
   const TransIcon = activity.transportAfter?.mode && TRANSPORT_ICONS[activity.transportAfter.mode]
   const address = bi(activity.address, lang)
+  const externalLink = normalizeExternalLink(activity.link || activity.mapLink)
 
   const copyAddress = () => {
     navigator.clipboard.writeText(address).then(() => {
@@ -104,6 +111,17 @@ export default function ActivityDetailPage() {
                   </button>
                 )
               })()}
+              {externalLink && (
+                <a
+                  href={externalLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center mt-2"
+                  style={{ color: 'var(--accent)', fontSize: 13, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                >
+                  link
+                </a>
+              )}
             </div>
           </div>
 

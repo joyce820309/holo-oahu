@@ -104,7 +104,7 @@
       "images":     "圖片（最多 2 張）",
       "lat":        "緯度",
       "lng":        "經度",
-      "mapLink":    "地圖連結"
+      "link":       "Link"
     },
     "transport": {
       "title":    "交通",

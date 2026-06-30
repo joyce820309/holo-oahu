@@ -32,10 +32,16 @@ const emptyForm = () => ({
   address:  { zh: '', en: '' },
   note:     { zh: '', en: '' },
   type: 'attraction', date: '', startTime: '', endTime: '',
-  lat: '', lng: '', mapLink: '', segmentId: 'hawaii', order: 0,
+  lat: '', lng: '', link: '', segmentId: 'hawaii', order: 0,
   images: [],
   transportAfter: { mode: 'none', durationMin: '', note: { zh: '', en: '' } },
 })
+
+function normalizeExternalLink(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`
+}
 
 function CustomSelect({ value, onChange, options, placeholder = '—' }) {
   const [open, setOpen] = useState(false)
@@ -183,9 +189,13 @@ function MinuteCombo({ value, onChange }) {
       <div className="flex items-center glass-mini rounded-xl overflow-hidden"
         style={{ background: 'var(--mini-bg)', border: open ? '0.5px solid var(--accent)' : '0.5px solid var(--mini-border)', boxShadow: open ? '0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent)' : 'none' }}>
         <input
-          type="number" min="0" max="59"
+          type="text"
+          inputMode="numeric"
           value={inputVal}
-          onChange={e => setInputVal(e.target.value)}
+          onChange={e => {
+            const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 2)
+            setInputVal(digitsOnly)
+          }}
           onFocus={() => setOpen(true)}
           onBlur={e => { if (!wrapRef.current?.contains(e.relatedTarget)) commit(e.target.value) }}
           onKeyDown={e => { if (e.key === 'Enter') commit(e.target.value); if (e.key === 'Escape') setOpen(false) }}
@@ -229,6 +239,92 @@ function MinuteCombo({ value, onChange }) {
   )
 }
 
+function HourCombo({ value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [inputVal, setInputVal] = useState(value || '')
+  const wrapRef = useRef(null)
+
+  useEffect(() => { setInputVal(value || '') }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    const h = e => { if (!wrapRef.current?.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [open])
+
+  const commit = (raw) => {
+    const text = String(raw ?? '').trim()
+    if (text === '') {
+      onChange('')
+      setInputVal('')
+      setOpen(false)
+      return
+    }
+    const n = parseInt(text, 10)
+    if (!isNaN(n)) {
+      const clamped = String(Math.min(23, Math.max(0, n))).padStart(2, '0')
+      onChange(clamped)
+      setInputVal(clamped)
+    }
+    setOpen(false)
+  }
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', flex: 1 }}>
+      <div className="flex items-center glass-mini rounded-xl overflow-hidden"
+        style={{ background: 'var(--mini-bg)', border: open ? '0.5px solid var(--accent)' : '0.5px solid var(--mini-border)', boxShadow: open ? '0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent)' : 'none' }}>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={inputVal}
+          onChange={e => {
+            const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 2)
+            setInputVal(digitsOnly)
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={e => { if (!wrapRef.current?.contains(e.relatedTarget)) commit(e.target.value) }}
+          onKeyDown={e => { if (e.key === 'Enter') commit(e.currentTarget.value); if (e.key === 'Escape') setOpen(false) }}
+          placeholder="時"
+          className="flex-1 px-3 py-2.5 text-sm outline-none bg-transparent"
+          style={{ color: inputVal ? 'var(--text-primary)' : 'var(--text-secondary)', minWidth: 0, width: '100%' }}
+        />
+        <button type="button" onMouseDown={e => { e.preventDefault(); setOpen(v => !v) }}
+          className="px-2 py-2.5" style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>
+          <ChevronDown size={14} strokeWidth={1.5} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        </button>
+      </div>
+      {open && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: wrapRef.current ? wrapRef.current.getBoundingClientRect().bottom + 6 : 0,
+          left: wrapRef.current ? wrapRef.current.getBoundingClientRect().left : 0,
+          width: wrapRef.current ? wrapRef.current.getBoundingClientRect().width : 120,
+          zIndex: 9999, background: 'var(--glass-bg)', border: '0.5px solid var(--glass-border)',
+          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+          borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden',
+        }}>
+          <div style={{ maxHeight: 240, overflowY: 'auto', padding: '4px 0' }}>
+            {HOURS.map(h => (
+              <button key={h} type="button"
+                onMouseDown={() => { onChange(h); setInputVal(h); setOpen(false) }}
+                className="w-full px-3 py-2.5 text-sm text-left"
+                style={{
+                  background: h === value ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
+                  color: h === value ? 'var(--accent)' : 'var(--text-primary)',
+                  fontWeight: h === value ? 500 : 400,
+                }}>
+                {h} 時
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  )
+}
+
 function TimeSelect({ label, value, onChange }) {
   const [h, m] = value ? value.split(':') : ['', '']
   const setH = v => onChange(v ? `${v}:${m || '00'}` : '')
@@ -238,7 +334,7 @@ function TimeSelect({ label, value, onChange }) {
       <label className="text-secondary text-sm">{label}</label>
       <div className="flex items-center gap-2">
         <div className="flex-1">
-          <CustomSelect value={h || ''} onChange={setH} options={HOURS.map(v => ({ value: v, label: `${v} 時` }))} placeholder="時" />
+          <HourCombo value={h || ''} onChange={setH} />
         </div>
         <span className="text-secondary font-medium">:</span>
         <MinuteCombo value={m || ''} onChange={setM} />
@@ -425,6 +521,7 @@ export default function ActivityFormPage() {
         setForm({
           ...emptyForm(),
           ...a,
+          link: a.link || a.mapLink || '',
           transportAfter: a.transportAfter || emptyForm().transportAfter,
         })
       }
@@ -442,9 +539,11 @@ export default function ActivityFormPage() {
   const handleDateAction = async (targetDate) => {
     const mode = dateSheet
     setDateSheet(null)
+    const { mapLink, ...restForm } = form
     const data = {
-      ...form,
+      ...restForm,
       date: targetDate,
+      link: normalizeExternalLink(form.link || form.mapLink),
       lat: form.lat ? parseFloat(form.lat) : null,
       lng: form.lng ? parseFloat(form.lng) : null,
       transportAfter: {
@@ -472,9 +571,11 @@ export default function ActivityFormPage() {
     if (!isDraft && !form.date) { toast.error('請選擇日期'); return }
     submitting.current = true
     setSaving(true)
+    const { mapLink, ...restForm } = form
     const data = {
-      ...form,
+      ...restForm,
       status: isDraft ? 'draft' : 'confirmed',
+      link: normalizeExternalLink(form.link || form.mapLink),
       lat: form.lat ? parseFloat(form.lat) : null,
       lng: form.lng ? parseFloat(form.lng) : null,
       transportAfter: {
@@ -619,7 +720,7 @@ export default function ActivityFormPage() {
           <AdvancedToggle>
             <InputField label={t('activities.fields.lat')}     value={form.lat}     onChange={v => set('lat', v)}     type="number" />
             <InputField label={t('activities.fields.lng')}     value={form.lng}     onChange={v => set('lng', v)}     type="number" />
-            <InputField label={t('activities.fields.mapLink')} value={form.mapLink} onChange={v => set('mapLink', v)} />
+            <InputField label={t('activities.fields.link')}    value={form.link}    onChange={v => set('link', v)}    type="url" placeholder="https://example.com" />
           </AdvancedToggle>
         </div>
 

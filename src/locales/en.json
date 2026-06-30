@@ -104,7 +104,7 @@
       "images":     "Photos (max 2)",
       "lat":        "Latitude",
       "lng":        "Longitude",
-      "mapLink":    "Map Link"
+      "link":       "Link"
     },
     "transport": {
       "title":    "Transport",
