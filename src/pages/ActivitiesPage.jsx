@@ -7,6 +7,7 @@ import {
   Car, Bus, Footprints, Truck, EllipsisVertical, MapPinned,
   Plane, ArrowLeftRight, RotateCcw, GripVertical, Check,
   ArrowUpCircle, ArrowDownCircle, Navigation, ExternalLink,
+  PencilLine, X, Clock,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
@@ -19,6 +20,8 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import toast from 'react-hot-toast'
 import { useActivities } from '../hooks/useActivities'
+import { useFlights } from '../hooks/useFlights'
+import { deleteFlightActivities } from '../lib/syncFlightActivities'
 import ConfirmDialog from '../components/ConfirmDialog'
 import NoteContent from '../components/NoteContent'
 import { ActivitiesSkeleton } from '../components/Skeleton'
@@ -55,6 +58,44 @@ function normalizeExternalLink(value) {
   return /^https?:\/\//i.test(text) ? text : `https://${text}`
 }
 
+function uiText(lang) {
+  const zh = lang === 'zh-TW'
+  return {
+    viewDetails: zh ? '查看詳情' : 'View Details',
+    edit: zh ? '編輯' : 'Edit',
+    promote: zh ? '移入正式' : 'Move to Schedule',
+    demote: zh ? '退回草稿' : 'Move to Drafts',
+    delete: zh ? '刪除' : 'Delete',
+    moreOptions: zh ? '更多選項' : 'More Options',
+    dayManagement: zh ? '天數管理' : 'Day Management',
+    daySwapDesc: zh
+      ? '互換兩天的正式行程；機票同步產生的行程不會移動，因為它由機票日期管理。若搬入的行程撞到飛行時間，會自動避開並提醒。'
+      : 'Swap confirmed activities between two days. Flight-synced activities stay put because their dates are managed from Flights. If moved activities overlap flight time, they will be shifted and you will be notified.',
+    firstDay: zh ? '第一天' : 'First Day',
+    secondDay: zh ? '第二天' : 'Second Day',
+    cancel: zh ? '取消' : 'Cancel',
+    processing: zh ? '處理中...' : 'Processing...',
+    swap: zh ? '互換' : 'Swap',
+    inFlight: zh ? '飛行中' : 'In Flight',
+    landing: zh ? '落地' : 'Landing',
+    transit: zh ? '轉機' : 'Transit',
+    returnTrip: zh ? '回程' : 'Return',
+    setTransport: zh ? '設定交通' : 'Set Transport',
+    noDrafts: zh ? '尚無草稿行程' : 'No draft activities yet',
+    scheduleTab: zh ? '行程' : 'Schedule',
+    draftTab: zh ? '草稿' : 'Drafts',
+    done: zh ? '完成' : 'Done',
+    reorderHint: zh ? '長按並拖拉' : 'Long press and drag',
+    reorderHintSuffix: zh ? '調整同日順序' : 'to reorder the day',
+    noSwappableActivities: zh ? '沒有可互換的非航班正式行程' : 'No non-flight confirmed activities to swap',
+    swapSuccess: zh ? '已互換兩天行程' : 'Days swapped',
+    flightsSkipped: zh ? '航班同步行程已保留原日期，請到機票頁調整航班' : 'Flight-synced activities stayed on their original dates. Adjust flights from the Flights page.',
+    flightAdjusted: zh ? '已避開飛行時間，部分行程開始時間已調整' : 'Flight time avoided. Some activity start times were adjusted.',
+    swapFailed: zh ? '互換失敗' : 'Failed to swap days',
+    deleteFailed: zh ? '刪除失敗' : 'Failed to delete',
+  }
+}
+
 // Day N label from date string
 function dayLabel(dateStr) {
   const start = new Date(TRIP_START_DATE)
@@ -64,57 +105,78 @@ function dayLabel(dateStr) {
   return { n: diff + 1, d }
 }
 
-// ── Context menu (⋮) — popover on desktop, bottom sheet on mobile ────────
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth < 768 : false
-  )
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)')
-    const handler = e => setIsMobile(e.matches)
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [])
-  return isMobile
+function weekdayLabel(dateStr) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short' })
 }
 
-function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
-  const [open, setOpen] = useState(false)
-  const [pos, setPos]   = useState({ top: 0, right: 0 })
-  const btnRef = useRef(null)
-  const isMobile = useIsMobile()
+function timeToMinutes(time) {
+  if (!time) return null
+  const [h, m] = time.split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  return h * 60 + m
+}
 
-  const openMenu = e => {
-    e.stopPropagation()
-    const r = btnRef.current.getBoundingClientRect()
-    setPos({ top: r.bottom + 4, right: window.innerWidth - r.right })
-    setOpen(true)
+function minutesToTime(minutes) {
+  const safe = Math.max(0, Math.min(1439, minutes))
+  const h = Math.floor(safe / 60).toString().padStart(2, '0')
+  const m = (safe % 60).toString().padStart(2, '0')
+  return `${h}:${m}`
+}
+
+function getFlightWindows(items) {
+  return items
+    .filter(a => a.flightId)
+    .map(a => ({
+      start: timeToMinutes(a.startTime),
+      end: timeToMinutes(a.endTime),
+    }))
+    .filter(w => w.start !== null && w.end !== null && w.end > w.start)
+    .sort((a, b) => a.start - b.start)
+}
+
+function avoidFlightWindows(activity, windows) {
+  const start = timeToMinutes(activity.startTime)
+  const end = timeToMinutes(activity.endTime)
+  if (start === null || end === null || end <= start) {
+    return { data: {}, adjusted: false }
   }
 
-  useEffect(() => {
-    if (!open || isMobile) return
-    const tid = setTimeout(() => {
-      const close = e => {
-        if (!btnRef.current?.contains(e.target)) setOpen(false)
-      }
-      document.addEventListener('click', close)
-      return () => document.removeEventListener('click', close)
-    }, 0)
-    return () => clearTimeout(tid)
-  }, [open, isMobile])
+  let nextStart = start
+  for (const window of windows) {
+    if (nextStart < window.end && end > window.start) {
+      nextStart = Math.max(nextStart, window.end)
+    }
+  }
+
+  if (nextStart === start || nextStart >= end) {
+    return { data: {}, adjusted: false }
+  }
+
+  return { data: { startTime: minutesToTime(nextStart) }, adjusted: true }
+}
+
+
+function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
+  const { i18n } = useTranslation()
+  const text = uiText(i18n.language)
+  const [open, setOpen] = useState(false)
+  const btnRef = useRef(null)
+
+  const openMenu = e => { e.stopPropagation(); setOpen(true) }
+  const close    = e => { e?.stopPropagation(); setOpen(false) }
 
   useEffect(() => {
-    if (!open || !isMobile) return
+    if (!open) return
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
-  }, [open, isMobile])
+  }, [open])
 
   const items = [
-    { label: '查看詳情', Icon: MapPinned,       action: onView,    show: !!onView    },
-    { label: '編輯',     Icon: Pencil,           action: onEdit,    show: true        },
-    { label: '移入正式', Icon: ArrowUpCircle,    action: onPromote, show: !!onPromote },
-    { label: '退回草稿', Icon: ArrowDownCircle,  action: onDemote,  show: !!onDemote  },
-    { label: '刪除',     Icon: Trash2,           action: onDelete,  show: true, danger: true },
+    { label: text.viewDetails, Icon: MapPinned,       action: onView,    show: !!onView    },
+    { label: text.edit,        Icon: Pencil,           action: onEdit,    show: true        },
+    { label: text.promote,     Icon: ArrowUpCircle,    action: onPromote, show: !!onPromote },
+    { label: text.demote,      Icon: ArrowDownCircle,  action: onDemote,  show: !!onDemote  },
+    { label: text.delete,      Icon: Trash2,           action: onDelete,  show: true, danger: true },
   ].filter(i => i.show)
 
   return (
@@ -125,75 +187,49 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
         style={{ padding: 6, color: 'var(--text-secondary)', minWidth: 32, minHeight: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, flexShrink: 0, transition: 'opacity 0.15s' }}
         onMouseEnter={e => e.currentTarget.style.opacity = '0.6'}
         onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        aria-label="更多選項"
+        aria-label={text.moreOptions}
       >
         <EllipsisVertical size={16} />
       </button>
 
-      {open && isMobile && createPortal(
+      {open && createPortal(
         <div
           style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.32)' }}
-          onClick={e => { e.stopPropagation(); setOpen(false) }}
+          onClick={close}
         >
           <div
             onClick={e => e.stopPropagation()}
             style={{
               position: 'absolute', left: 0, right: 0, bottom: 0,
-              background: 'var(--glass-bg)', backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
+              background: 'var(--glass-bg)', backdropFilter: 'blur(28px)',
+              WebkitBackdropFilter: 'blur(28px)',
+              borderTop: '0.5px solid var(--glass-border)',
               borderTopLeftRadius: 20, borderTopRightRadius: 20,
-              boxShadow: '0 -8px 24px rgba(0,0,0,0.18)',
-              paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
-              animation: 'sheet-up 0.22s ease-out',
+              boxShadow: '0 -8px 32px rgba(0,0,0,0.16)',
+              paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
+              animation: 'sheet-up 0.22s cubic-bezier(0.32,0.72,0,1)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
               <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--mini-border)' }} />
             </div>
             {items.map(({ label, Icon, action, danger }) => (
               <button
                 key={label}
-                onClick={e => { e.stopPropagation(); setOpen(false); action() }}
+                onClick={e => { e.stopPropagation(); close(); action() }}
+                onMouseEnter={e => { if (!danger) e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 8%, transparent)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '16px 20px', fontSize: 16, textAlign: 'left', background: 'none', border: 'none',
+                  padding: '14px 20px', fontSize: 15, textAlign: 'left', background: 'none', border: 'none',
                   color: danger ? '#e05555' : 'var(--text-primary)', cursor: 'pointer',
+                  transition: 'background 0.15s',
                 }}
               >
-                <Icon size={19} />{label}
+                <Icon size={18} style={{ flexShrink: 0 }} />{label}
               </button>
             ))}
           </div>
-        </div>,
-        document.body
-      )}
-
-      {open && !isMobile && createPortal(
-        <div
-          style={{
-            position: 'fixed', top: pos.top, right: pos.right, zIndex: 9999,
-            background: 'var(--glass-bg)', backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '0.5px solid var(--glass-border)', borderRadius: 12,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.18)', minWidth: 128, overflow: 'hidden',
-          }}
-        >
-          {items.map(({ label, Icon, action, danger }) => (
-            <button
-              key={label}
-              onClick={e => { e.stopPropagation(); setOpen(false); action() }}
-              style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                padding: '11px 14px', fontSize: 14, textAlign: 'left', background: 'none', border: 'none',
-                color: danger ? '#e05555' : 'var(--text-primary)', cursor: 'pointer',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, transparent)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'none'}
-            >
-              <Icon size={15} />{label}
-            </button>
-          ))}
         </div>,
         document.body
       )}
@@ -203,6 +239,8 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
 
 // ── Swipeable card (normal mode, mobile) ──────────────────────────────────
 function SwipeableCard({ children, onDelete, onEdit }) {
+  const { i18n } = useTranslation()
+  const text = uiText(i18n.language)
   const [offset, setOffset] = useState(0)
   const [open, setOpen]     = useState(false)
   const startX   = useRef(null)
@@ -256,11 +294,11 @@ function SwipeableCard({ children, onDelete, onEdit }) {
       <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: ACTION_WIDTH, display: 'flex', transform: `translateX(${ACTION_WIDTH + offset}px)`, transition: 'transform 0.25s ease', zIndex: 0 }}>
         <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); close(); onEdit() }}
           style={{ flex: 1, background: 'var(--accent)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12, borderRadius: '12px 0 0 12px' }}>
-          <Pencil size={16} />編輯
+          <Pencil size={16} />{text.edit}
         </button>
         <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); close(); onDelete() }}
           style={{ flex: 1, background: '#e05555', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12, borderRadius: '0 12px 12px 0' }}>
-          <Trash2 size={16} />刪除
+          <Trash2 size={16} />{text.delete}
         </button>
       </div>
     </div>
@@ -281,6 +319,7 @@ function SortableItem({ id, children }) {
 
 // ── Activity card ──────────────────────────────────────────────────────────
 function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote, showNoteContent = false }) {
+  const text = uiText(lang)
   const isFlight = !!activity.flightId
   const Icon     = isFlight ? Plane : (TYPE_ICONS[activity.type] || MapPin)
   const crossDay = activity.startTime && activity.endTime && activity.endTime < activity.startTime
@@ -304,7 +343,7 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
     },
     role: 'button',
     tabIndex: 0,
-    'aria-label': `查看 ${bi(activity.title, lang)} 詳情`,
+    'aria-label': `${text.viewDetails}: ${bi(activity.title, lang)}`,
   } : {}
 
   return (
@@ -319,7 +358,7 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
             {...dragHandleProps}
             className="mt-1 flex-shrink-0 touch-none"
             style={{ color: 'var(--text-secondary)', cursor: 'grab', padding: 4, minWidth: 32, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            aria-label="拖拉排序"
+            aria-label={lang === 'zh-TW' ? '拖拉排序' : 'Drag to reorder'}
           >
             <GripVertical size={18} />
           </button>
@@ -423,7 +462,8 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
 }
 
 // ── Flight group wrapper — dashed border box around all flight activities ──
-function FlightGroupBox({ children, landingTime }) {
+function FlightGroupBox({ children, landingTime, lang }) {
+  const text = uiText(lang)
   return (
     <div style={{ marginBottom: 12, position: 'relative' }}>
       {/* Dashed border container */}
@@ -453,9 +493,9 @@ function FlightGroupBox({ children, landingTime }) {
           }}
         >
           <Plane size={11} style={{ color: 'var(--accent)' }} />
-          飛行中
+          {text.inFlight}
           {landingTime && (
-            <span style={{ color: 'var(--accent)', fontWeight: 500 }}>· 落地 {landingTime}</span>
+            <span style={{ color: 'var(--accent)', fontWeight: 500 }}>· {text.landing} {landingTime}</span>
           )}
         </div>
         {children}
@@ -464,9 +504,65 @@ function FlightGroupBox({ children, landingTime }) {
   )
 }
 
+function DaySwapDialog({ lang, dates, fromDate, toDate, setFromDate, setToDate, onConfirm, onCancel, busy }) {
+  const text = uiText(lang)
+  const options = ALL_TRIP_DATES.map(d => {
+    const { n, d: md } = dayLabel(d)
+    return { id: d, label: `Day ${n} · ${md} ${weekdayLabel(d)}` }
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
+      <div className="glass-card p-5 mx-4 max-w-sm w-full">
+        <div className="flex items-center gap-2 mb-4">
+          <ArrowLeftRight size={18} style={{ color: 'var(--accent)' }} />
+          <p className="text-primary font-medium">{text.dayManagement}</p>
+        </div>
+        <p className="text-secondary text-xs leading-relaxed mb-4">
+          {text.daySwapDesc}
+        </p>
+        <div className="space-y-3">
+          <label className="block">
+            <span className="text-secondary text-sm">{text.firstDay}</span>
+            <select
+              className="w-full glass-mini px-3 py-2.5 mt-1 text-primary rounded-xl outline-none"
+              style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}
+              value={fromDate}
+              onChange={e => setFromDate(e.target.value)}
+            >
+              {options.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-secondary text-sm">{text.secondDay}</span>
+            <select
+              className="w-full glass-mini px-3 py-2.5 mt-1 text-primary rounded-xl outline-none"
+              style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}
+              value={toDate}
+              onChange={e => setToDate(e.target.value)}
+            >
+              {options.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="flex gap-3 justify-end mt-5">
+          <button className="btn-ghost" onClick={onCancel} disabled={busy}>{text.cancel}</button>
+          <button
+            className="btn-primary"
+            onClick={onConfirm}
+            disabled={busy || fromDate === toDate || !dates.includes(fromDate) && !dates.includes(toDate)}
+            style={busy ? { opacity: 0.65 } : undefined}
+          >{busy ? text.processing : text.swap}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Date group ─────────────────────────────────────────────────────────────
 function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder, onDemote, showNoteContent }) {
   const { t } = useTranslation()
+  const text = uiText(lang)
   const [localItems, setLocalItems] = useState(items)
   const [activeId, setActiveId] = useState(null)
 
@@ -514,17 +610,17 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
   return (
     <div className="mb-8">
       <div className="flex items-center gap-2 mb-3">
-        <p className="text-secondary text-sm font-medium">{date}</p>
+        <p className="text-secondary text-sm font-medium">{date} <span style={{ fontSize: 11, opacity: 0.75 }}>{weekdayLabel(date)}</span></p>
         {isTransit && (
           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
             style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#b45309', border: '0.5px solid #f59e0b55' }}>
-            <ArrowLeftRight size={10} />轉機
+            <ArrowLeftRight size={10} />{text.transit}
           </span>
         )}
         {isReturn && (
           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
             style={{ background: 'color-mix(in srgb, #8b5cf6 15%, transparent)', color: '#6d28d9', border: '0.5px solid #8b5cf655' }}>
-            <RotateCcw size={10} />回程
+            <RotateCcw size={10} />{text.returnTrip}
           </span>
         )}
       </div>
@@ -615,7 +711,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                           style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
                           onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
                         >
-                          <Plus size={12} />設定交通
+                          <Plus size={12} />{text.setTransport}
                         </button>
                       ) : null}
                     </div>
@@ -626,7 +722,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
 
             {/* Flight group box — shown only in normal mode when there are flight activities */}
             {!editMode && flightItems.length > 0 && (
-              <FlightGroupBox landingTime={landingTime}>
+              <FlightGroupBox landingTime={landingTime} lang={lang}>
                 {flightItems.map((activity, idx) => {
                   const cardActions = {
                     onView:   () => navigate(`/trip/activities/${activity.id}`),
@@ -684,7 +780,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                       style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
                       onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${lastFlight.id}/transport`) }}
                     >
-                      <Plus size={12} />設定交通
+                      <Plus size={12} />{text.setTransport}
                     </button>
                   ) : null}
                 </div>
@@ -751,7 +847,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                           style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
                           onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
                         >
-                          <Plus size={12} />設定交通
+                          <Plus size={12} />{text.setTransport}
                         </button>
                       ) : null}
                     </div>
@@ -811,10 +907,13 @@ function DayTabs({ activeTab, onChange, lang }) {
 
   const allLabel = lang === 'zh-TW' ? '全部' : 'All'
   const tabs = [
-    { id: 'all', label: allLabel, sub: null },
+    { id: 'all', label: allLabel, dayNum: null, dayOfMonth: null, weekday: null },
     ...ALL_TRIP_DATES.map(d => {
       const { n, d: md } = dayLabel(d)
-      return { id: d, label: `Day ${n}`, sub: md }
+      const wd = weekdayLabel(d)
+      const dayOfMonth = md.split('/')[1]
+      const isWeekend = wd === 'Sat' || wd === 'Sun'
+      return { id: d, dayNum: `D${n}`, dayOfMonth, weekday: wd, isWeekend }
     }),
   ]
 
@@ -826,17 +925,20 @@ function DayTabs({ activeTab, onChange, lang }) {
         ref={scrollRef}
         style={{
           display: 'flex',
-          flexWrap: 'nowrap',      // overridden to wrap on ≥768 via className
-          gap: 6,
+          flexWrap: 'nowrap',
+          gap: 5,
           overflowX: 'auto',
           paddingBottom: 4,
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
+          alignItems: 'stretch',
         }}
         className="hide-scrollbar md:flex-wrap md:overflow-x-visible"
       >
         {tabs.map(tab => {
           const isActive = tab.id === activeTab
+          const weekendColor = 'var(--weekend-color)'
+          const activeColor = tab.isWeekend ? weekendColor : 'var(--accent)'
           return (
             <button
               key={tab.id}
@@ -846,23 +948,30 @@ function DayTabs({ activeTab, onChange, lang }) {
                 flexShrink: 0,
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
-                padding: tab.sub ? '5px 10px' : '7px 12px',
+                padding: tab.dayOfMonth ? '5px 8px' : '0 12px',
                 borderRadius: 20,
-                border: isActive ? '1.5px solid var(--accent)' : '1px solid var(--mini-border)',
-                background: isActive ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'var(--mini-bg)',
-                color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
-                fontWeight: isActive ? 600 : 400,
-                fontSize: 12,
-                lineHeight: 1.2,
+                border: isActive
+                  ? `1.5px solid ${activeColor}`
+                  : '1px solid var(--mini-border)',
+                background: isActive
+                  ? `color-mix(in srgb, ${activeColor} 12%, transparent)`
+                  : 'var(--mini-bg)',
                 cursor: 'pointer',
-                minHeight: 34,
-                minWidth: tab.sub ? 50 : 40,
+                minHeight: tab.dayOfMonth ? 52 : 34,
+                minWidth: tab.dayOfMonth ? 40 : 40,
                 textAlign: 'center',
-                transition: 'border-color 0.15s, background 0.15s, color 0.15s',
+                transition: 'border-color 0.15s, background 0.15s',
               }}
             >
-              <span>{tab.label}</span>
-              {tab.sub && <span style={{ fontSize: 9, opacity: 0.7, marginTop: 1 }}>{tab.sub}</span>}
+              {tab.dayOfMonth ? (
+                <>
+                  <span style={{ fontSize: 8, lineHeight: 1.2, color: isActive ? activeColor : 'var(--text-secondary)', opacity: 0.65 }}>{tab.dayNum}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, color: isActive ? activeColor : tab.isWeekend ? weekendColor : 'var(--text-primary)' }}>{tab.dayOfMonth}</span>
+                  <span style={{ fontSize: 8, lineHeight: 1.2, color: isActive ? activeColor : tab.isWeekend ? weekendColor : 'var(--text-secondary)', opacity: isActive ? 0.8 : 0.65 }}>{tab.weekday}</span>
+                </>
+              ) : (
+                <span style={{ fontSize: 12, fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}>{tab.label}</span>
+              )}
             </button>
           )
         })}
@@ -885,18 +994,32 @@ function DayTabs({ activeTab, onChange, lang }) {
 
 // ── Draft list ─────────────────────────────────────────────────────────────
 function DraftList({ drafts, lang, navigate, setDelId, onPromote }) {
+  const text = uiText(lang)
   if (drafts.length === 0) return (
-    <p className="text-secondary text-center py-8">尚無草稿行程</p>
+    <p className="text-secondary text-center py-8">{text.noDrafts}</p>
   )
   return (
     <div className="space-y-3">
       {drafts.map(activity => {
         const Icon = TYPE_ICONS[activity.type] || MapPin
+        // Cards without a startTime will lose ordering when promoted — warn visually
+        const missingTime = !activity.startTime
         return (
-          <div key={activity.id} className="glass-card p-4" style={{ border: '1px dashed color-mix(in srgb, var(--text-secondary) 30%, transparent)' }}>
+          <div
+            key={activity.id}
+            className="glass-card p-4"
+            style={{
+              border: missingTime
+                ? '1px dashed color-mix(in srgb, #f59e0b 60%, transparent)'
+                : '1px dashed color-mix(in srgb, var(--text-secondary) 30%, transparent)',
+              background: missingTime
+                ? 'color-mix(in srgb, #f59e0b 8%, var(--glass-bg))'
+                : undefined,
+            }}
+          >
             <div className="flex items-start gap-3">
               <div className="mt-0.5 p-2 rounded-lg flex-shrink-0" style={{ background: 'var(--mini-bg)' }}>
-                <Icon size={18} style={{ color: 'var(--text-secondary)' }} />
+                <Icon size={18} style={{ color: missingTime ? '#d97706' : 'var(--text-secondary)' }} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-primary font-medium text-base leading-snug"
@@ -910,6 +1033,11 @@ function DraftList({ drafts, lang, navigate, setDelId, onPromote }) {
                 )}
                 {activity.date && (
                   <p className="text-secondary text-xs mt-1">{activity.date}{activity.startTime ? ` · ${activity.startTime}` : ''}</p>
+                )}
+                {missingTime && (
+                  <p style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>
+                    {lang === 'zh-TW' ? '移入正式前請填寫時間，否則順序會亂' : 'Add a start time before promoting to keep order'}
+                  </p>
                 )}
               </div>
               <CardMenu
@@ -929,18 +1057,61 @@ function DraftList({ drafts, lang, navigate, setDelId, onPromote }) {
 export default function ActivitiesPage() {
   const { t, i18n } = useTranslation()
   const { activities, loading, deleteActivity, updateActivity } = useActivities()
+  const { deleteFlight } = useFlights()
   const navigate   = useNavigate()
   const [searchParams] = useSearchParams()
   const [delId, setDelId]         = useState(null)
+  const [deletingIds, setDeletingIds] = useState(() => new Set())
   const [editMode, setEditMode]   = useState(false)
+  useEffect(() => {
+    document.body.classList.toggle('edit-mode', editMode)
+    return () => document.body.classList.remove('edit-mode')
+  }, [editMode])
+  const [showDaySwap, setShowDaySwap] = useState(false)
+  const [editSheetOpen, setEditSheetOpen] = useState(false)
+  const sheetRef = useRef(null)
+  const sheetDragStartY = useRef(null)
+  const sheetDragY = useRef(0)
+  const closeEditSheet = useCallback(() => setEditSheetOpen(false), [])
+  const onSheetPointerDown = useCallback(e => {
+    sheetDragStartY.current = e.clientY
+    sheetDragY.current = 0
+    if (sheetRef.current) sheetRef.current.style.transition = 'none'
+  }, [])
+  const onSheetPointerMove = useCallback(e => {
+    if (sheetDragStartY.current === null) return
+    const dy = e.clientY - sheetDragStartY.current
+    if (dy < 0) return
+    sheetDragY.current = dy
+    if (sheetRef.current) sheetRef.current.style.transform = `translateY(${dy}px)`
+  }, [])
+  const onSheetPointerUp = useCallback(e => {
+    if (sheetDragStartY.current === null) return
+    const elapsed = e.timeStamp - (e.timeStamp - sheetDragY.current)
+    const shouldClose = sheetDragY.current > 120 || (sheetDragY.current / Math.max(elapsed, 1)) > 0.5
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'transform 0.25s ease'
+      sheetRef.current.style.transform = shouldClose ? 'translateY(100%)' : 'translateY(0)'
+    }
+    if (shouldClose) setTimeout(closeEditSheet, 200)
+    sheetDragStartY.current = null
+  }, [closeEditSheet])
+  const [swapBusy, setSwapBusy] = useState(false)
+  const [swapFromDate, setSwapFromDate] = useState(() => getInitialTab())
+  const [swapToDate, setSwapToDate] = useState(() => {
+    const idx = ALL_TRIP_DATES.indexOf(getInitialTab())
+    return ALL_TRIP_DATES[Math.min(idx + 1, ALL_TRIP_DATES.length - 1)] || ALL_TRIP_DATES[0]
+  })
   const [statusTab, setStatusTab] = useState('confirmed')
   const [activeTab, setActiveTab] = useState(() => {
     return sessionStorage.getItem('activities_tab') || getInitialTab()
   })
   const lang = i18n.language
+  const text = uiText(lang)
 
-  const confirmed = activities.filter(a => (a.status ?? 'confirmed') === 'confirmed')
-  const drafts    = activities.filter(a => a.status === 'draft')
+  const visibleActivities = activities.filter(a => !deletingIds.has(a.id))
+  const confirmed = visibleActivities.filter(a => (a.status ?? 'confirmed') === 'confirmed')
+  const drafts    = visibleActivities.filter(a => a.status === 'draft')
 
   const sorted = [...confirmed].sort((a, b) => {
     if (a.date !== b.date) return a.date.localeCompare(b.date)
@@ -974,8 +1145,124 @@ export default function ActivitiesPage() {
     await Promise.all(reorderedItems.map((item, idx) => updateActivity(item.id, { order: idx })))
   }
 
+  async function handleSwapDays() {
+    if (swapFromDate === swapToDate) return
+
+    const isConfirmed = a => (a.status ?? 'confirmed') === 'confirmed'
+    const fromItems = activities.filter(a => isConfirmed(a) && a.date === swapFromDate)
+    const toItems = activities.filter(a => isConfirmed(a) && a.date === swapToDate)
+    const fromMovable = fromItems.filter(a => !a.flightId)
+    const toMovable = toItems.filter(a => !a.flightId)
+    const skippedFlights = fromItems.length + toItems.length - fromMovable.length - toMovable.length
+    const fromFlightWindows = getFlightWindows(fromItems)
+    const toFlightWindows = getFlightWindows(toItems)
+    let adjustedCount = 0
+
+    const updates = [
+      ...fromMovable.map((activity, idx) => {
+        const avoided = avoidFlightWindows(activity, toFlightWindows)
+        if (avoided.adjusted) adjustedCount += 1
+        return { id: activity.id, data: { date: swapToDate, order: idx, ...avoided.data } }
+      }),
+      ...toMovable.map((activity, idx) => {
+        const avoided = avoidFlightWindows(activity, fromFlightWindows)
+        if (avoided.adjusted) adjustedCount += 1
+        return { id: activity.id, data: { date: swapFromDate, order: idx, ...avoided.data } }
+      }),
+    ]
+
+    if (updates.length === 0) {
+      toast(text.noSwappableActivities)
+      return
+    }
+
+    setSwapBusy(true)
+    try {
+      await Promise.all(updates.map(({ id, data }) => updateActivity(id, data)))
+      setShowDaySwap(false)
+      toast.success(text.swapSuccess)
+      if (skippedFlights > 0) {
+        toast(text.flightsSkipped)
+      }
+      if (adjustedCount > 0) {
+        toast(text.flightAdjusted)
+      }
+    } catch {
+      toast.error(text.swapFailed)
+    } finally {
+      setSwapBusy(false)
+    }
+  }
+
+  async function handleDeleteActivity() {
+    const target = activities.find(a => a.id === delId)
+    if (!target) {
+      setDelId(null)
+      return
+    }
+
+    const optimisticIds = target.flightId
+      ? activities.filter(a => a.flightId === target.flightId).map(a => a.id)
+      : [target.id]
+
+    setDeletingIds(prev => {
+      const next = new Set(prev)
+      optimisticIds.forEach(id => next.add(id))
+      return next
+    })
+
+    try {
+      if (target.flightId) {
+        await deleteFlight(target.flightId)
+        await deleteFlightActivities(target.flightId)
+      } else {
+        await deleteActivity(target.id)
+      }
+    } catch {
+      setDeletingIds(prev => {
+        const next = new Set(prev)
+        optimisticIds.forEach(id => next.delete(id))
+        return next
+      })
+      toast.error(text.deleteFailed)
+    } finally {
+      setDelId(null)
+    }
+  }
+
   const promote = id => updateActivity(id, { status: 'confirmed' }).catch(() => {})
   const demote  = id => updateActivity(id, { status: 'draft'     }).catch(() => {})
+
+  async function handleSortByTime(targetDate) {
+    // Get the activities to sort: either just the active tab's date, or all dates
+    const datesToSort = targetDate === 'all' ? allDates : [targetDate]
+    const updates = []
+    for (const date of datesToSort) {
+      const items = (byDate[date] || []).filter(a => !a.flightId)
+      const sorted = [...items].sort((a, b) => {
+        // Activities without startTime go to the end
+        if (!a.startTime && !b.startTime) return 0
+        if (!a.startTime) return 1
+        if (!b.startTime) return -1
+        return a.startTime.localeCompare(b.startTime)
+      })
+      sorted.forEach((item, idx) => {
+        if ((item.order ?? 9999) !== idx) {
+          updates.push({ id: item.id, order: idx })
+        }
+      })
+    }
+    if (updates.length === 0) {
+      toast(lang === 'zh-TW' ? '順序已是最新' : 'Already sorted')
+      return
+    }
+    try {
+      await Promise.all(updates.map(({ id, order }) => updateActivity(id, { order })))
+      toast.success(lang === 'zh-TW' ? '已按時間重新排序' : 'Sorted by time')
+    } catch {
+      toast.error(lang === 'zh-TW' ? '排序失敗' : 'Sort failed')
+    }
+  }
 
   return (
     <div
@@ -985,15 +1272,26 @@ export default function ActivitiesPage() {
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('activities.title')}</h2>
         <div className="flex items-center gap-2">
-          {statusTab === 'confirmed' && activeTab !== 'all' && !editMode && (
-            <button onClick={() => setEditMode(true)} className="btn-ghost">編輯</button>
+          {statusTab === 'confirmed' && !editMode && (
+            <button onClick={() => setEditSheetOpen(true)} className="btn-ghost" style={{ padding: '7px 10px' }}>
+              <PencilLine size={15} />
+            </button>
+          )}
+          {editMode && (
+            <button onClick={() => setEditMode(false)}
+              style={{ padding: '6px 10px', fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', transition: 'opacity 0.15s' }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.65'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              <Check size={14} />{text.done}
+            </button>
           )}
           {!editMode && (
             <Link
               to={`/trip/activities/new${statusTab === 'draft' ? '?draft=1' : ''}`}
               className="btn-primary"
             >
-              <Plus size={18} />{t('activities.new')}
+              <Plus size={16} />{lang === 'zh-TW' ? '新增' : 'Add'}
             </Link>
           )}
         </div>
@@ -1002,8 +1300,8 @@ export default function ActivitiesPage() {
       {/* Status tabs: 行程 / 草稿 */}
       <div className="flex gap-1 mb-4">
         {[
-          { key: 'confirmed', label: '行程' },
-          { key: 'draft',     label: `草稿${drafts.length > 0 ? ` ${drafts.length}` : ''}` },
+          { key: 'confirmed', label: text.scheduleTab },
+          { key: 'draft',     label: `${text.draftTab}${drafts.length > 0 ? ` ${drafts.length}` : ''}` },
         ].map(({ key, label }) => (
           <button
             key={key}
@@ -1022,7 +1320,7 @@ export default function ActivitiesPage() {
         <>
           {editMode && (
             <p className="text-secondary text-xs mb-4 text-center">
-              長按並拖拉 <GripVertical size={11} className="inline" /> 調整同日順序
+              {text.reorderHint} <GripVertical size={11} className="inline" /> {text.reorderHintSuffix}
             </p>
           )}
 
@@ -1057,15 +1355,18 @@ export default function ActivitiesPage() {
           {editMode && (
             <button
               onClick={() => setEditMode(false)}
+              onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.filter = 'brightness(1.06)' }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.filter = 'none' }}
               style={{
                 position: 'fixed', right: 20, bottom: 88, zIndex: 100,
                 background: 'var(--accent)', color: 'white', border: 'none',
                 borderRadius: 99, padding: '12px 22px', fontSize: 15, fontWeight: 600,
                 display: 'flex', alignItems: 'center', gap: 8,
                 boxShadow: '0 4px 20px rgba(0,0,0,0.2)', cursor: 'pointer',
+                transition: 'opacity 0.15s, filter 0.15s',
               }}
             >
-              <Check size={18} />完成
+              <Check size={18} />{text.done}
             </button>
           )}
         </>
@@ -1089,17 +1390,136 @@ export default function ActivitiesPage() {
 
       {delId && (
         <ConfirmDialog
-          onConfirm={async () => {
-            try {
-              await deleteActivity(delId)
-            } catch {
-              toast.error('刪除失敗')
-            } finally {
-              setDelId(null)
-            }
-          }}
+          onConfirm={handleDeleteActivity}
           onCancel={() => setDelId(null)}
         />
+      )}
+
+      {showDaySwap && (
+        <DaySwapDialog
+          lang={lang}
+          dates={allDates}
+          fromDate={swapFromDate}
+          toDate={swapToDate}
+          setFromDate={setSwapFromDate}
+          setToDate={setSwapToDate}
+          onConfirm={handleSwapDays}
+          onCancel={() => setShowDaySwap(false)}
+          busy={swapBusy}
+        />
+      )}
+
+      {/* ── Edit mode Bottom Sheet ── */}
+      {editSheetOpen && (
+        <>
+          <div
+            onClick={closeEditSheet}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 190 }}
+          />
+          <div
+            ref={sheetRef}
+            onPointerDown={onSheetPointerDown}
+            onPointerMove={onSheetPointerMove}
+            onPointerUp={onSheetPointerUp}
+            style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
+              borderRadius: '20px 20px 0 0',
+              background: 'var(--glass-bg)',
+              backdropFilter: 'blur(28px)',
+              WebkitBackdropFilter: 'blur(28px)',
+              borderTop: '0.5px solid var(--glass-border)',
+              boxShadow: '0 -8px 40px rgba(30,61,79,0.16)',
+              padding: '10px 16px 48px',
+              animation: 'sheet-up 0.25s cubic-bezier(0.32,0.72,0,1)',
+              touchAction: 'none',
+              userSelect: 'none',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 12px', cursor: 'grab' }}>
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--mini-border)' }} />
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14, textAlign: 'center', fontWeight: 500 }}>
+              {lang === 'zh-TW' ? '選擇編輯模式' : 'Select edit mode'}
+            </p>
+            {[
+              {
+                icon: <GripVertical size={22} />,
+                title: lang === 'zh-TW' ? '排序活動' : 'Reorder',
+                desc: lang === 'zh-TW' ? '長按並拖曳，調整當日活動順序' : 'Drag to reorder activities for the day',
+                disabled: activeTab === 'all',
+                onSelect: () => {
+                  setEditMode(true)
+                  closeEditSheet()
+                },
+              },
+              {
+                icon: <ArrowLeftRight size={22} />,
+                title: lang === 'zh-TW' ? '交換日期' : 'Swap Days',
+                desc: lang === 'zh-TW' ? '選取兩天，互換所有活動' : 'Swap all activities between two days',
+                disabled: false,
+                onSelect: () => {
+                  const baseDate = activeTab !== 'all' ? activeTab : getInitialTab()
+                  const baseIdx = ALL_TRIP_DATES.indexOf(baseDate)
+                  setSwapFromDate(baseDate)
+                  setSwapToDate(ALL_TRIP_DATES[baseIdx + 1] || ALL_TRIP_DATES[baseIdx - 1] || ALL_TRIP_DATES[0])
+                  setShowDaySwap(true)
+                  closeEditSheet()
+                },
+              },
+              {
+                icon: <Clock size={22} />,
+                title: lang === 'zh-TW' ? '按時間排序' : 'Sort by Time',
+                desc: activeTab === 'all'
+                  ? (lang === 'zh-TW' ? '所有日期依 startTime 重新排序' : 'Re-sort all days by start time')
+                  : (lang === 'zh-TW' ? '此日期依 startTime 重新排序' : 'Re-sort this day by start time'),
+                disabled: false,
+                onSelect: () => {
+                  handleSortByTime(activeTab)
+                  closeEditSheet()
+                },
+              },
+            ].map((opt, i) => (
+              <button key={i}
+                onClick={opt.disabled ? undefined : opt.onSelect}
+                onMouseEnter={e => { if (!opt.disabled) { e.currentTarget.style.background = 'color-mix(in srgb, var(--accent) 10%, var(--mini-bg))'; e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--accent) 35%, var(--mini-border))' } }}
+                onMouseLeave={e => { if (!opt.disabled) { e.currentTarget.style.background = 'var(--mini-bg)'; e.currentTarget.style.borderColor = 'var(--mini-border)' } }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 16, width: '100%',
+                  padding: '16px 14px', marginBottom: 10,
+                  background: opt.disabled ? 'rgba(0,0,0,0.03)' : 'var(--mini-bg)',
+                  border: `0.5px solid ${opt.disabled ? 'rgba(0,0,0,0.08)' : 'var(--mini-border)'}`,
+                  borderRadius: 16, cursor: opt.disabled ? 'not-allowed' : 'pointer',
+                  opacity: opt.disabled ? 0.45 : 1,
+                  textAlign: 'left',
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                  background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--accent)',
+                }}>
+                  {opt.icon}
+                </div>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{opt.title}</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{opt.desc}</p>
+                  {opt.disabled && (
+                    <p style={{ fontSize: 11, color: '#e05c5c', marginTop: 2 }}>
+                      {lang === 'zh-TW' ? '請先選擇特定日期' : 'Please select a specific day first'}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
+            <button onClick={closeEditSheet}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--mini-bg)'; e.currentTarget.style.color = 'var(--text-primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '12px', background: 'transparent', border: '0.5px solid var(--mini-border)', borderRadius: 12, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)', transition: 'background 0.15s, color 0.15s' }}>
+              <X size={14} />{lang === 'zh-TW' ? '取消' : 'Cancel'}
+            </button>
+          </div>
+        </>
       )}
     </div>
   )

@@ -1,8 +1,8 @@
-﻿import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, Check, Loader2, Copy, MoveRight } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Check, Loader2, Copy, MoveRight, AlertTriangle } from 'lucide-react'
 import { useActivities } from '../hooks/useActivities'
 import ImageUploader from '../components/ImageUploader'
 import toast from 'react-hot-toast'
@@ -495,6 +495,13 @@ function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
   )
 }
 
+function timeToMinutes(t) {
+  if (!t) return null
+  const [h, m] = t.split(':').map(Number)
+  if (Number.isNaN(h) || Number.isNaN(m)) return null
+  return h * 60 + m
+}
+
 export default function ActivityFormPage() {
   const { t, i18n } = useTranslation()
   const navigate    = useNavigate()
@@ -510,6 +517,34 @@ export default function ActivityFormPage() {
   const [dateSheet, setDateSheet] = useState(null)
   const submitting = useRef(false)
   const lang = i18n.language
+
+  // Detect time overlap with other confirmed activities on the same date
+  const overlapWarning = useMemo(() => {
+    if (!form.date || !form.startTime) return null
+    const myStart = timeToMinutes(form.startTime)
+    const myEnd   = form.endTime ? timeToMinutes(form.endTime) : myStart + 1
+    if (myStart === null) return null
+    const siblings = activities.filter(a =>
+      a.id !== id &&
+      a.date === form.date &&
+      (a.status ?? 'confirmed') === 'confirmed' &&
+      a.startTime
+    )
+    const overlapping = siblings.filter(a => {
+      const aStart = timeToMinutes(a.startTime)
+      const aEnd   = a.endTime ? timeToMinutes(a.endTime) : aStart + 1
+      if (aStart === null) return false
+      return myStart < aEnd && myEnd > aStart
+    })
+    if (overlapping.length === 0) return null
+    const names = overlapping.map(a => {
+      const title = a.title
+      return (typeof title === 'object' ? (title.zh || title.en) : title) || '?'
+    }).join('、')
+    return lang === 'zh-TW'
+      ? `時間與「${names}」重疊`
+      : `Time overlaps with: ${names}`
+  }, [form.date, form.startTime, form.endTime, activities, id, lang])
 
   useEffect(() => {
     if (!isNew) {
@@ -704,6 +739,12 @@ export default function ActivityFormPage() {
           />
           <TimeSelect label={`${t('activities.fields.startTime')}${isDraft ? '（選填）' : ''}`} value={form.startTime} onChange={v => set('startTime', v)} />
           <TimeSelect label={`${t('activities.fields.endTime')}${isDraft ? '（選填）' : ''}`}   value={form.endTime}   onChange={v => set('endTime', v)} />
+          {overlapWarning && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, padding: '8px 10px', borderRadius: 10, background: 'color-mix(in srgb, #f59e0b 12%, transparent)', border: '0.5px solid color-mix(in srgb, #f59e0b 50%, transparent)' }}>
+              <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+              <span style={{ fontSize: 12, color: '#d97706', lineHeight: 1.4 }}>{overlapWarning}</span>
+            </div>
+          )}
         </div>
 
         <div className="glass-card p-4 space-y-3">

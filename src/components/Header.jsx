@@ -18,7 +18,7 @@ export default function Header() {
 
   return (
     <header
-      className="glass-mini sticky top-0 flex items-center justify-between px-4 py-2.5 mx-2 mt-2"
+      className="glass-mini sticky top-0 flex items-center justify-between px-4 py-2.5 mx-2 mt-2 holo-header"
       style={{ zIndex: 2147483647 }}
     >
       <div className="flex items-center gap-1.5">

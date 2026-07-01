@@ -1,5 +1,6 @@
-﻿import { useTranslation } from 'react-i18next'
-import { doc, setDoc } from 'firebase/firestore'
+﻿import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { UserMinus, Crown, ShieldCheck, Users } from 'lucide-react'
 import { useTrip } from '../hooks/useTrip'
 import { useAuth } from '../contexts/AuthContext'
@@ -54,6 +55,16 @@ export default function MembersPage() {
   const { trip, updateTrip } = useTrip()
   const lang = i18n.language
 
+  const [usersMap, setUsersMap] = useState({})
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'users'), snap => {
+      const map = {}
+      snap.forEach(d => { map[d.id] = { uid: d.id, ...d.data() } })
+      setUsersMap(map)
+    })
+    return unsub
+  }, [])
+
   const syncUserRole = (uid, role) =>
     setDoc(doc(db, 'users', uid), { role }, { merge: true })
 
@@ -72,7 +83,15 @@ export default function MembersPage() {
     toast.success('已移除成員')
   }
 
-  const members = trip?.members || []
+  // Merge: all users from `users` collection, role from trip.members when available
+  const tripMemberMap = Object.fromEntries((trip?.members || []).map(m => [m.uid, m]))
+  const members = Object.values(usersMap).map(u => ({
+    uid: u.uid,
+    displayName: u.name || u.displayName || '',
+    email: u.email || '',
+    photoURL: u.photoURL || null,
+    role: tripMemberMap[u.uid]?.role || u.role || 'viewer',
+  }))
 
   return (
     <div className="px-4 pb-36">
