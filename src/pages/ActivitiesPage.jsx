@@ -160,16 +160,44 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
   const { i18n } = useTranslation()
   const text = uiText(i18n.language)
   const [open, setOpen] = useState(false)
-  const btnRef = useRef(null)
+  const btnRef   = useRef(null)
+  const sheetRef = useRef(null)
+  const dragStartY = useRef(null)
+  const dragY      = useRef(0)
 
   const openMenu = e => { e.stopPropagation(); setOpen(true) }
-  const close    = e => { e?.stopPropagation(); setOpen(false) }
+  const close    = useCallback(e => { e?.stopPropagation(); setOpen(false) }, [])
 
   useEffect(() => {
     if (!open) return
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [open])
+
+  const onPointerDown = useCallback(e => {
+    dragStartY.current = e.clientY
+    dragY.current = 0
+    if (sheetRef.current) sheetRef.current.style.transition = 'none'
+  }, [])
+
+  const onPointerMove = useCallback(e => {
+    if (dragStartY.current === null) return
+    const dy = e.clientY - dragStartY.current
+    if (dy < 0) return
+    dragY.current = dy
+    if (sheetRef.current) sheetRef.current.style.transform = `translateY(${dy}px)`
+  }, [])
+
+  const onPointerUp = useCallback(e => {
+    if (dragStartY.current === null) return
+    const shouldClose = dragY.current > 80
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'transform 0.25s ease'
+      sheetRef.current.style.transform = shouldClose ? 'translateY(100%)' : 'translateY(0)'
+    }
+    if (shouldClose) setTimeout(close, 200)
+    dragStartY.current = null
+  }, [close])
 
   const items = [
     { label: text.viewDetails, Icon: MapPinned,       action: onView,    show: !!onView    },
@@ -198,7 +226,11 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
           onClick={close}
         >
           <div
+            ref={sheetRef}
             onClick={e => e.stopPropagation()}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
             style={{
               position: 'absolute', left: 0, right: 0, bottom: 0,
               background: 'var(--glass-bg)', backdropFilter: 'blur(28px)',
@@ -208,9 +240,11 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
               boxShadow: '0 -8px 32px rgba(0,0,0,0.16)',
               paddingBottom: 'max(16px, env(safe-area-inset-bottom))',
               animation: 'sheet-up 0.22s cubic-bezier(0.32,0.72,0,1)',
+              touchAction: 'none',
+              userSelect: 'none',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px', cursor: 'grab' }}>
               <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--mini-border)' }} />
             </div>
             {items.map(({ label, Icon, action, danger }) => (
