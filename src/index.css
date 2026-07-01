@@ -43,21 +43,37 @@
   padding: 0;
 }
 
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-body::-webkit-scrollbar {
-  display: none;
 }
 
 .app-bg {
   background: linear-gradient(145deg, var(--bg-from) 0%, var(--bg-mid) 45%, var(--bg-to) 100%);
-  min-height: 100dvh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.app-bg > main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-bg > main::-webkit-scrollbar {
+  display: none;
 }
 
 .glass-card {

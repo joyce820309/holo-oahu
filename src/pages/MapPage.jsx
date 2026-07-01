@@ -209,7 +209,7 @@ export default function MapPage() {
   const closePopup = useCallback(() => setSelected(null), [])
 
   return (
-    <div style={{ position: 'relative', height: 'calc(100dvh - 56px)', display: 'flex', flexDirection: 'column' }} className="pb-20">
+    <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }} className="pb-20">
       <h2 className="text-primary font-medium text-xl px-4 py-4 flex-shrink-0">{t('map.title')}</h2>
 
       <div className="flex-1 mx-2 rounded-2xl overflow-hidden" style={{ position: 'relative' }}>

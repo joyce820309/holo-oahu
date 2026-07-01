@@ -76,7 +76,7 @@ export default function BottomNav() {
         }}
       />
 
-      <nav className="glass-mini fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-2 pt-2 mx-2" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}>
+      <nav className="glass-mini fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-2 py-2 mx-2" style={{ marginBottom: 'env(safe-area-inset-bottom, 8px)' }}>
         {NAV_ITEMS.map(({ to, icon: Icon, key, exact }) => {
           const active = exact ? p === to : (p === to || p.startsWith(to + '/'))
           return (
