@@ -478,8 +478,8 @@ export default function NotificationsPage() {
                   disabled={isPast(r.notifyAt)}
                 />
                 <button
-                  className="text-secondary p-1.5 rounded-lg transition-colors"
-                  style={{ minWidth: 32, minHeight: 32 }}
+                  className="p-1.5 rounded-lg transition-colors"
+                  style={{ minWidth: 32, minHeight: 32, color: 'var(--danger)' }}
                   onClick={() => setDelId(r.id)}
                 >
                   <Trash2 size={16} />

@@ -31,7 +31,7 @@ function makeIcon(color) {
 }
 
 const ACTIVITY_ICON = makeIcon('#3B9EFF')  // accent blue
-const HOTEL_ICON    = makeIcon('#e05555')  // red
+const HOTEL_ICON    = makeIcon('#cd8686')  // red
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function bi(field, lang) {
@@ -113,7 +113,7 @@ function PopupCard({ item, type, lang, onClose, t, navigate }) {
         <div className="p-1.5 rounded-lg glass-mini flex-shrink-0" style={{ marginTop: 1 }}>
           {type === 'activity'
             ? <MapPin size={15} style={{ color: '#3B9EFF' }} />
-            : <Hotel  size={15} style={{ color: '#e05555' }} />
+            : <Hotel  size={15} style={{ color: 'var(--danger)' }} />
           }
         </div>
         <div className="min-w-0">
@@ -249,7 +249,7 @@ export default function MapPage() {
             <span className="text-primary text-xs">{t('activities.title')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#e05555', flexShrink: 0 }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }} />
             <span className="text-primary text-xs">{t('hotels.title')}</span>
           </div>
         </div>

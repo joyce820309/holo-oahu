@@ -7,7 +7,7 @@ import {
   Car, Bus, Footprints, Truck, EllipsisVertical, MapPinned,
   Plane, ArrowLeftRight, RotateCcw, GripVertical, Check,
   ArrowUpCircle, ArrowDownCircle, Navigation, ExternalLink,
-  PencilLine, X, Clock,
+  PencilLine, X, Clock, Bed,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
@@ -31,11 +31,12 @@ const ACTION_WIDTH = 128
 const SWIPE_THRESHOLD = 48
 
 const TYPE_ICONS = {
-  restaurant: UtensilsCrossed,
-  attraction: Ticket,
-  beach:      Waves,
-  experience: Star,
-  other:      MapPin,
+  restaurant:    UtensilsCrossed,
+  attraction:    Ticket,
+  beach:         Waves,
+  experience:    Star,
+  accommodation: Bed,
+  other:         MapPin,
 }
 
 const TRANSPORT_ICONS = {
@@ -256,7 +257,7 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 14,
                   padding: '14px 20px', fontSize: 15, textAlign: 'left', background: 'none', border: 'none',
-                  color: danger ? '#e05555' : 'var(--text-primary)', cursor: 'pointer',
+                  color: danger ? 'var(--danger)' : 'var(--text-primary)', cursor: 'pointer',
                   transition: 'background 0.15s',
                 }}
               >
@@ -331,7 +332,7 @@ function SwipeableCard({ children, onDelete, onEdit }) {
           <Pencil size={16} />{text.edit}
         </button>
         <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); close(); onDelete() }}
-          style={{ flex: 1, background: '#e05555', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12, borderRadius: '0 12px 12px 0' }}>
+          style={{ flex: 1, background: 'var(--danger)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, fontSize: 12, borderRadius: '0 12px 12px 0' }}>
           <Trash2 size={16} />{text.delete}
         </button>
       </div>
@@ -442,6 +443,32 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
               {activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}
               {crossDay && <span style={{ marginLeft: 4, color: 'var(--accent)', fontWeight: 500 }}>+1</span>}
             </p>
+          )}
+          {!editMode && isFlight && (activity.departTerminal || activity.arriveTerminal) && (
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {activity.departTerminal && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 99,
+                  background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                  color: 'var(--accent)',
+                  border: '0.5px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                }}>
+                  ✈ 出發 {activity.departTerminal}
+                </span>
+              )}
+              {activity.arriveTerminal && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 99,
+                  background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                  color: 'var(--accent)',
+                  border: '0.5px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                }}>
+                  ✈ 抵達 {activity.arriveTerminal}
+                </span>
+              )}
+            </div>
           )}
           {!editMode && externalLink && (
             <a

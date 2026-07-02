@@ -29,7 +29,6 @@ import MembersPage      from './pages/MembersPage'
 import SettingsPage     from './pages/SettingsPage'
 import NotificationsPage from './pages/NotificationsPage'
 import WeatherDetailPage from './pages/WeatherDetailPage'
-import DesignPreviewPage from './pages/DesignPreviewPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -57,7 +56,7 @@ function AppShell() {
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/trip" replace /> : <LoginPage />} />
           <Route path="/emergency" element={<EmergencyPage />} />
-          <Route path="/design" element={<DesignPreviewPage />} />
+
           <Route path="/" element={<Navigate to="/trip" replace />} />
           <Route path="/trip" element={<ProtectedRoute><TripPage /></ProtectedRoute>}>
             <Route index element={<HomePage />} />

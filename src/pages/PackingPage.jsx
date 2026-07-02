@@ -106,7 +106,7 @@ function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
           </button>
           <button
             className="flex-1 flex items-center justify-center"
-            style={{ background: '#e05555', color: 'white', borderRadius: '0 12px 12px 0' }}
+            style={{ background: 'var(--danger)', color: 'white', borderRadius: '0 12px 12px 0' }}
             onMouseDown={e => { e.stopPropagation(); setOffset(0); onDelete() }}
           >
             <Trash2 size={16} />
@@ -132,7 +132,7 @@ function SwipeableItemRow({ item, lang, canEdit, onToggle, onEdit, onDelete }) {
         {canEdit && (
           <div className="hidden md:flex gap-1 ml-2">
             <button className="text-secondary p-1.5 rounded-lg" style={{ transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={onEdit}><Pencil size={14} /></button>
-            <button className="p-1.5 rounded-lg" style={{ color: '#e05555', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={onDelete}><Trash2 size={14} /></button>
+            <button className="p-1.5 rounded-lg" style={{ color: 'var(--danger)', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={onDelete}><Trash2 size={14} /></button>
           </div>
         )}
       </div>
@@ -150,7 +150,7 @@ function ItemForm({ categories, defaultCategoryId, lang, editingItem, onSave, on
         categoryId: editingItem.categoryId || editingItem.category || defaultCategoryId,
         notes: editingItem.notes || '',
       }
-    : { item: { zh: '護照', en: 'Passport' }, categoryId: defaultCategoryId, notes: '' }
+    : { item: { zh: '', en: '' }, categoryId: defaultCategoryId, notes: '' }
   )
 
   return (
@@ -166,7 +166,7 @@ function ItemForm({ categories, defaultCategoryId, lang, editingItem, onSave, on
         zhValue={form.item.zh} enValue={form.item.en}
         onZhChange={v => setForm(f => ({ ...f, item: { ...f.item, zh: v } }))}
         onEnChange={v => setForm(f => ({ ...f, item: { ...f.item, en: v } }))}
-        placeholder={lang === 'zh-TW' ? '例如：泳衣' : 'e.g. Swimsuit'}
+        placeholder={lang === 'zh-TW' ? '例如：護照' : 'e.g. Passport'}
       />
 
       <div className="space-y-1">
@@ -232,9 +232,9 @@ function ShoppingForm({ editingItem, onSave, onCancel }) {
         <p className="text-primary font-medium text-sm">{editingItem ? '編輯品項' : '新增品項'}</p>
         <button className="text-secondary p-1 rounded-lg" onClick={onCancel}><X size={17} /></button>
       </div>
-      {field('brand', '品牌', '例如：Lululemon')}
-      {field('item',  '品項', '例如：瑜伽褲')}
-      {field('notes', '備註', '選填，例如：黑色 size S')}
+      {field('brand', '品牌', '選填')}
+      {field('item',  '品項', '必填，夏威夷豆')}
+      {field('notes', '備註', '選填，例如：口味')}
       <div className="flex gap-3 pt-1">
         <button className="btn-ghost flex-1 justify-center" onClick={onCancel}>取消</button>
         <button className="btn-primary flex-1 justify-center" onClick={() => onSave(form)}>儲存</button>
@@ -266,7 +266,7 @@ function ShoppingRow({ item, canEdit, onEdit, onDelete }) {
             onMouseEnter={e => e.currentTarget.style.opacity='0.5'}
             onMouseLeave={e => e.currentTarget.style.opacity='1'}
             onClick={onEdit}><Pencil size={14} /></button>
-          <button className="p-1.5 rounded-lg" style={{ color: '#e05555', transition: 'opacity 0.15s' }}
+          <button className="p-1.5 rounded-lg" style={{ color: 'var(--danger)', transition: 'opacity 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.opacity='0.5'}
             onMouseLeave={e => e.currentTarget.style.opacity='1'}
             onClick={onDelete}><Trash2 size={14} /></button>

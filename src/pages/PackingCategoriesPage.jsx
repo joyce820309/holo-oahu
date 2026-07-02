@@ -136,7 +136,7 @@ export default function PackingCategoriesPage() {
                 <button className="p-2 rounded-lg text-secondary" onClick={() => openEdit(cat)}>
                   <Pencil size={16} />
                 </button>
-                <button className="p-2 rounded-lg text-secondary" onClick={() => requestDelete(cat)}>
+                <button className="p-2 rounded-lg" style={{ color: 'var(--danger)' }} onClick={() => requestDelete(cat)}>
                   <Trash2 size={16} />
                 </button>
               </div>

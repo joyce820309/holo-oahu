@@ -12,54 +12,109 @@ function trimEmptyEdge(lines) {
   return lines.slice(start, end)
 }
 
-function parseNote(text) {
-  const lines = trimEmptyEdge(splitLines(text))
-  if (lines.length === 0) return { type: 'plain', lines: [] }
+const dashRe    = /^-\s+(.+)$/
+const numRe     = /^\d+(?:[.)])?\s+(.+)$/
 
-  const nonEmpty = lines.filter((line) => line.trim() !== '')
-  const dashRe = /^-\s+(.+)$/
-  const numRe = /^\d+(?:[.)])?\s+(.+)$/
+// 把連續行分組成 segments：{ type: 'ul'|'ol'|'text', lines/items }
+function parseSegments(lines) {
+  const segments = []
+  let i = 0
 
-  const isAllDash = nonEmpty.length > 0 && nonEmpty.every((line) => dashRe.test(line.trim()))
-  if (isAllDash) {
-    return {
-      type: 'ul',
-      items: nonEmpty.map((line) => line.trim().replace(dashRe, '$1').trim()),
+  while (i < lines.length) {
+    const raw = lines[i]
+    const trimmed = raw.trim()
+
+    if (trimmed === '') {
+      // 空行當分隔，不單獨輸出
+      i++
+      continue
     }
+
+    if (dashRe.test(trimmed)) {
+      const items = []
+      while (i < lines.length && (dashRe.test(lines[i].trim()) || lines[i].trim() === '')) {
+        if (lines[i].trim() !== '') items.push(lines[i].trim().replace(dashRe, '$1').trim())
+        i++
+      }
+      segments.push({ type: 'ul', items })
+      continue
+    }
+
+    if (numRe.test(trimmed)) {
+      const items = []
+      while (i < lines.length && (numRe.test(lines[i].trim()) || lines[i].trim() === '')) {
+        if (lines[i].trim() !== '') items.push(lines[i].trim().replace(numRe, '$1').trim())
+        i++
+      }
+      segments.push({ type: 'ol', items })
+      continue
+    }
+
+    // 普通文字行：把連續的非列表行收成一個 text segment
+    const textLines = []
+    while (i < lines.length && !dashRe.test(lines[i].trim()) && !numRe.test(lines[i].trim())) {
+      textLines.push(lines[i])
+      i++
+    }
+    segments.push({ type: 'text', lines: textLines })
   }
 
-  const isAllNumbered = nonEmpty.length > 0 && nonEmpty.every((line) => numRe.test(line.trim()))
-  if (isAllNumbered) {
-    return {
-      type: 'ol',
-      items: nonEmpty.map((line) => line.trim().replace(numRe, '$1').trim()),
-    }
-  }
-
-  return { type: 'plain', lines }
+  return segments
 }
 
 export default function NoteContent({ text, className = '' }) {
-  const parsed = parseNote(text)
-  if (parsed.type === 'ul') {
+  const lines = trimEmptyEdge(splitLines(text))
+  if (lines.length === 0) return null
+
+  const segments = parseSegments(lines)
+
+  if (segments.length === 1) {
+    const s = segments[0]
+    if (s.type === 'ul') {
+      return (
+        <ul className={`list-disc pl-5 space-y-1 ${className}`.trim()}>
+          {s.items.map((item, i) => <li key={i}>{item}</li>)}
+        </ul>
+      )
+    }
+    if (s.type === 'ol') {
+      return (
+        <ol className={`list-decimal pl-5 space-y-1 ${className}`.trim()}>
+          {s.items.map((item, i) => <li key={i}>{item}</li>)}
+        </ol>
+      )
+    }
     return (
-      <ul className={`list-disc pl-5 space-y-1 ${className}`.trim()}>
-        {parsed.items.map((item, index) => <li key={index}>{item}</li>)}
-      </ul>
+      <p className={className} style={{ whiteSpace: 'pre-wrap' }}>
+        {s.lines.join('\n')}
+      </p>
     )
   }
 
-  if (parsed.type === 'ol') {
-    return (
-      <ol className={`list-decimal pl-5 space-y-1 ${className}`.trim()}>
-        {parsed.items.map((item, index) => <li key={index}>{item}</li>)}
-      </ol>
-    )
-  }
-
+  // 混合內容
   return (
-    <p className={className} style={{ whiteSpace: 'pre-wrap' }}>
-      {parsed.lines.join('\n')}
-    </p>
+    <div className={className}>
+      {segments.map((s, si) => {
+        if (s.type === 'ul') {
+          return (
+            <ul key={si} className="list-disc pl-5 space-y-1" style={{ marginTop: si > 0 ? 6 : 0 }}>
+              {s.items.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          )
+        }
+        if (s.type === 'ol') {
+          return (
+            <ol key={si} className="list-decimal pl-5 space-y-1" style={{ marginTop: si > 0 ? 6 : 0 }}>
+              {s.items.map((item, i) => <li key={i}>{item}</li>)}
+            </ol>
+          )
+        }
+        return (
+          <p key={si} style={{ whiteSpace: 'pre-wrap', marginTop: si > 0 ? 6 : 0 }}>
+            {s.lines.join('\n')}
+          </p>
+        )
+      })}
+    </div>
   )
 }

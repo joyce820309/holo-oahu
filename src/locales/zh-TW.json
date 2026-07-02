@@ -82,11 +82,12 @@
     "edit":       "編輯活動",
     "noData":     "尚無活動",
     "type": {
-      "restaurant": "餐廳",
-      "attraction": "景點",
-      "beach":      "海灘",
-      "experience": "體驗",
-      "other":      "其他"
+      "restaurant":    "餐廳",
+      "attraction":    "景點",
+      "beach":         "海灘",
+      "experience":    "體驗",
+      "accommodation": "住宿",
+      "other":         "其他"
     },
     "fields": {
       "titleZh":    "標題（中文）",

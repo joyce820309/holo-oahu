@@ -71,6 +71,12 @@ service cloud.firestore {
         allow read:  if isSignedIn();
         allow write: if canEdit();
       }
+      match /users/{uid}/packing/{docId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
+      match /users/{uid}/shoppingItems/{docId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
       match /emergencyContacts/{docId} {
         allow read:  if isSignedIn();
         allow write: if isAdmin();

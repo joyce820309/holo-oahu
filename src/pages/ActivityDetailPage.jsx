@@ -1,6 +1,6 @@
 ﻿import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil, UtensilsCrossed, Ticket, Waves, Star, MapPin, Copy, Map, Navigation, Car, Bus, Footprints, Truck, Check } from 'lucide-react'
+import { ArrowLeft, Pencil, UtensilsCrossed, Ticket, Waves, Star, MapPin, Copy, Map, Navigation, Car, Bus, Footprints, Truck, Check, Bed } from 'lucide-react'
 import { useState } from 'react'
 import { useActivities } from '../hooks/useActivities'
 import { ActivityDetailSkeleton } from '../components/Skeleton'
@@ -8,11 +8,12 @@ import NoteContent from '../components/NoteContent'
 import toast from 'react-hot-toast'
 
 const TYPE_ICONS = {
-  restaurant: UtensilsCrossed,
-  attraction: Ticket,
-  beach:      Waves,
-  experience: Star,
-  other:      MapPin,
+  restaurant:    UtensilsCrossed,
+  attraction:    Ticket,
+  beach:         Waves,
+  experience:    Star,
+  accommodation: Bed,
+  other:         MapPin,
 }
 
 const TRANSPORT_ICONS = {

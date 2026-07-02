@@ -1,8 +1,9 @@
-﻿import { useState, useEffect } from 'react'
+﻿import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Car, Bus, Footprints, Truck, BanIcon } from 'lucide-react'
+import { ArrowLeft, Car, Bus, Footprints, Truck, BanIcon, Bed } from 'lucide-react'
 import { useActivities } from '../hooks/useActivities'
+import { useHotels } from '../hooks/useHotels'
 import toast from 'react-hot-toast'
 
 const MODES = [
@@ -25,9 +26,23 @@ export default function TransportEditPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const { activities, updateActivity } = useActivities()
+  const { hotels } = useHotels()
   const lang = i18n.language
 
   const activity = activities.find(a => a.id === id)
+
+  // 找出當天有設 evening anchor 的飯店（活動結束後回飯店）
+  const eveningHotel = useMemo(() => {
+    if (!activity?.date) return null
+    return hotels.find(h => h.tripAnchor?.[activity.date]?.evening) ?? null
+  }, [activity, hotels])
+
+  // 找出當天有設 morning anchor 的飯店（活動是從飯店出發）
+  const morningHotel = useMemo(() => {
+    if (!activity?.date) return null
+    return hotels.find(h => h.tripAnchor?.[activity.date]?.morning) ?? null
+  }, [activity, hotels])
+
   const [form, setForm] = useState({
     mode: '', durationMin: '', note: { zh: '', en: '' },
   })
@@ -71,16 +86,60 @@ export default function TransportEditPage() {
       </div>
 
       {/* Context: from → to */}
-      <div className="glass-card p-4 mb-4 flex items-center gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-secondary text-xs mb-0.5">離開</p>
-          <p className="text-primary text-sm font-medium truncate">{bi(activity.title, lang)}</p>
+      <div className="glass-card p-4 mb-4">
+        <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-secondary text-xs mb-0.5">離開</p>
+            <p className="text-primary text-sm font-medium truncate">{bi(activity.title, lang)}</p>
+            {morningHotel && (
+              <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: 'var(--accent)' }}>
+                <Bed size={11} />
+                從住宿出發
+              </p>
+            )}
+          </div>
+          <div className="text-secondary text-lg px-2">→</div>
+          <div className="flex-1 min-w-0 text-right">
+            <p className="text-secondary text-xs mb-0.5">前往下一站</p>
+            {eveningHotel
+              ? <p className="text-sm font-medium truncate" style={{ color: 'var(--accent)' }}>{bi(eveningHotel.name, lang)}</p>
+              : <p className="text-secondary text-sm">—</p>
+            }
+          </div>
         </div>
-        <div className="text-secondary text-lg px-2">→</div>
-        <div className="flex-1 min-w-0 text-right">
-          <p className="text-secondary text-xs mb-0.5">前往下一站</p>
-          <p className="text-secondary text-sm">—</p>
-        </div>
+
+        {eveningHotel && (
+          <div className="mt-3 pt-3" style={{ borderTop: '0.5px solid var(--mini-border)' }}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Bed size={13} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+                  已設為今晚住宿終點
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const hotelName = bi(eveningHotel.name, lang)
+                  const hotelAddr = bi(eveningHotel.address, lang)
+                  const note = hotelAddr ? `${hotelName}（${hotelAddr}）` : hotelName
+                  setForm(f => ({ ...f, note: { zh: note, en: note } }))
+                  toast.success('已帶入飯店資訊')
+                }}
+                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium"
+                style={{
+                  background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
+                  color: 'var(--accent)',
+                  border: '0.5px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Bed size={12} />
+                帶入備註
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">

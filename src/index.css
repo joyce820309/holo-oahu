@@ -18,6 +18,7 @@
   --color-border:   rgba(255,220,200,0.6);
   --tab-fade: linear-gradient(to right, rgba(232,213,196,0) 40%, #d4bfc8 100%);
   --weekend-color:  #a0877a;
+  --danger: #cd8686;
 }
 
 [data-theme="blue"] {
@@ -35,6 +36,7 @@
   --color-border:   rgba(180,220,240,0.6);
   --tab-fade: linear-gradient(to right, rgba(200,220,232,0) 40%, #d0e4de 100%);
   --weekend-color:  #81a5ba;
+  --danger: #cd8686;
 }
 
 * {

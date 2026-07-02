@@ -364,7 +364,7 @@ export default function HotelsPage() {
                           onClick={e => { e.stopPropagation(); setEditId(h.id); setShowForm(false) }}>
                           <Pencil size={15} />
                         </button>
-                        <button className="p-1.5 rounded-lg" style={{ color: '#e05555', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'}
+                        <button className="p-1.5 rounded-lg" style={{ color: 'var(--danger)', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'}
                           onClick={e => { e.stopPropagation(); setDelId(h.id) }}>
                           <Trash2 size={15} />
                         </button>

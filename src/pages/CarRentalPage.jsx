@@ -215,7 +215,7 @@ export default function CarRentalPage() {
                       </button>
                       <button
                         className="p-1.5 rounded-lg"
-                        style={{ color: '#e05555', transition: 'opacity 0.15s' }}
+                        style={{ color: 'var(--danger)', transition: 'opacity 0.15s' }}
                         onMouseEnter={e => e.currentTarget.style.opacity = '0.5'}
                         onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                         onClick={() => setDelId(item.id)}

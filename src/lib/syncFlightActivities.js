@@ -59,6 +59,8 @@ export async function syncFlightToActivities(flightId, flight) {
       date: dep.date,
       startTime: dep.time,
       endTime: arr.time,
+      departTerminal: flight.departTerminal || '',
+      arriveTerminal: flight.arriveTerminal || '',
     })
     // Remove stale depart/arrive entries if flight was previously cross-day
     for (const a of existing) {
@@ -76,6 +78,7 @@ export async function syncFlightToActivities(flightId, flight) {
         date: dep.date,
         startTime: dep.time,
         endTime: '',
+        departTerminal: flight.departTerminal || '',
       })
     }
     if (arr.date) {
@@ -86,6 +89,7 @@ export async function syncFlightToActivities(flightId, flight) {
         date: arr.date,
         startTime: arr.time,
         endTime: '',
+        arriveTerminal: flight.arriveTerminal || '',
       })
     }
     // Remove stale full entry

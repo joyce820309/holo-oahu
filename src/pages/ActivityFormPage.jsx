@@ -7,7 +7,7 @@ import { useActivities } from '../hooks/useActivities'
 import ImageUploader from '../components/ImageUploader'
 import toast from 'react-hot-toast'
 
-const TYPES    = ['restaurant', 'attraction', 'beach', 'experience', 'other']
+const TYPES    = ['restaurant', 'attraction', 'beach', 'experience', 'accommodation', 'other']
 const SEGMENTS = [
   { id: 'hawaii',  label: { zh: '夏威夷', en: 'Hawaii'  } },
   { id: 'seoul',   label: { zh: '首爾',   en: 'Seoul'   } },
@@ -528,7 +528,11 @@ export default function ActivityFormPage() {
       a.id !== id &&
       a.date === form.date &&
       (a.status ?? 'confirmed') === 'confirmed' &&
-      a.startTime
+      a.startTime &&
+      !a.flightId &&                       // 航班佔位不參與重疊偵測
+      !a._hotelAnchor &&                   // 飯店佔位不參與
+      a.segmentId !== 'transit' &&         // 轉機段（可能有時差）不參與
+      form.segmentId !== 'transit'         // 自己是轉機段時也不偵測
     )
     const overlapping = siblings.filter(a => {
       const aStart = timeToMinutes(a.startTime)

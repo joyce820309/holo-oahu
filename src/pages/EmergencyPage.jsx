@@ -127,7 +127,7 @@ export default function EmergencyPage() {
                     onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'}>
                     <Phone size={16} />
                   </a>
-                  <button className="p-2" style={{ color: '#e05555', minHeight: 44, transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => deleteContact(c.id)}>
+                  <button className="p-2" style={{ color: 'var(--danger)', minHeight: 44, transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => deleteContact(c.id)}>
                     <Trash2 size={16} />
                   </button>
                 </div>

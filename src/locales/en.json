@@ -82,11 +82,12 @@
     "edit":   "Edit Activity",
     "noData": "No activities yet",
     "type": {
-      "restaurant": "Restaurant",
-      "attraction": "Attraction",
-      "beach":      "Beach",
-      "experience": "Experience",
-      "other":      "Other"
+      "restaurant":    "Restaurant",
+      "attraction":    "Attraction",
+      "beach":         "Beach",
+      "experience":    "Experience",
+      "accommodation": "Accommodation",
+      "other":         "Other"
     },
     "fields": {
       "titleZh":    "Title (Chinese)",

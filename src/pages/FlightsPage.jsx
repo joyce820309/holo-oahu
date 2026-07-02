@@ -197,7 +197,8 @@ function AdvancedToggle({ children }) {
 const emptyForm = () => ({
   flightNo: '', airline: '',
   from: { zh: '', en: '' }, to: { zh: '', en: '' },
-  departDate: '', departTime: '', arriveDate: '', arriveTime: '',
+  departDate: '', departTime: '', departTerminal: '',
+  arriveDate: '', arriveTime: '', arriveTerminal: '',
   seat: '', confirmCode: '', note: '', images: [],
 })
 
@@ -257,14 +258,20 @@ function FlightForm({ initial, onSave, onCancel, id }) {
       <div className="glass-card p-4 space-y-3">
         <p className="text-primary font-medium text-sm">{t('flights.fields.departAt')}</p>
         <SelectField label="日期" value={form.departDate} onChange={v => set('departDate', v)} options={TRIP_DAYS} />
-        <TimeSelect  label="時間" value={form.departTime} onChange={v => set('departTime', v)} />
+        <div className="grid grid-cols-2 gap-3">
+          <TimeSelect label="時間" value={form.departTime} onChange={v => set('departTime', v)} />
+          <InputField label="航廈" value={form.departTerminal} onChange={v => set('departTerminal', v)} placeholder="T1 / T2" />
+        </div>
       </div>
 
       {/* 抵達 */}
       <div className="glass-card p-4 space-y-3">
         <p className="text-primary font-medium text-sm">{t('flights.fields.arriveAt')}</p>
         <SelectField label="日期" value={form.arriveDate} onChange={v => set('arriveDate', v)} options={TRIP_DAYS} />
-        <TimeSelect  label="時間" value={form.arriveTime} onChange={v => set('arriveTime', v)} />
+        <div className="grid grid-cols-2 gap-3">
+          <TimeSelect label="時間" value={form.arriveTime} onChange={v => set('arriveTime', v)} />
+          <InputField label="航廈" value={form.arriveTerminal} onChange={v => set('arriveTerminal', v)} placeholder="T1 / T2" />
+        </div>
       </div>
 
       {/* 訂位資訊 + 進階 */}
@@ -405,7 +412,7 @@ export default function FlightsPage() {
                       <button className="p-1.5 rounded-lg" style={{ color: 'var(--text-secondary)', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => { setEditId(f.id); setShowForm(false) }}>
                         <Pencil size={15} />
                       </button>
-                      <button className="p-1.5 rounded-lg" style={{ color: '#e05555', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => setDelId(f.id)}>
+                      <button className="p-1.5 rounded-lg" style={{ color: 'var(--danger)', transition: 'opacity 0.15s' }} onMouseEnter={e => e.currentTarget.style.opacity='0.5'} onMouseLeave={e => e.currentTarget.style.opacity='1'} onClick={() => setDelId(f.id)}>
                         <Trash2 size={15} />
                       </button>
                     </div>
