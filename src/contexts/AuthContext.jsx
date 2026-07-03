@@ -90,10 +90,16 @@ export function AuthProvider({ children }) {
     getRedirectResult(auth).then(async result => {
       if (result?.user) {
         resolved = true
-        const r = await resolveRole(result.user)
         setUser(result.user)
-        setRole(r)
-        setLoading(false)
+        try {
+          const r = await resolveRole(result.user)
+          setRole(r)
+        } catch (e) {
+          console.error('[AuthProvider] resolveRole (redirect) failed:', e?.code, e?.message)
+          setRole(fixedRoleForEmail(result.user.email) || 'editor')
+        } finally {
+          setLoading(false)
+        }
       }
     }).catch(() => {})
 
@@ -101,13 +107,23 @@ export function AuthProvider({ children }) {
       // Skip if redirect handler already resolved this sign-in
       if (resolved && u) return
       setUser(u)
-      if (u) {
-        const r = await resolveRole(u)
-        setRole(r)
-      } else {
-        setRole(null)
+      try {
+        if (u) {
+          const r = await resolveRole(u)
+          setRole(r)
+        } else {
+          setRole(null)
+        }
+      } catch (e) {
+        console.error('[AuthProvider] resolveRole (auth state) failed:', e?.code, e?.message)
+        if (u) {
+          setRole(fixedRoleForEmail(u.email) || 'editor')
+        } else {
+          setRole(null)
+        }
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     })
     return unsub
   }, [])

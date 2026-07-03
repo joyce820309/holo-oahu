@@ -120,6 +120,11 @@
       "duration": "分鐘",
       "noteZh":   "交通備注（中文）",
       "noteEn":   "Transport Note (English)"
+    },
+    "export": {
+      "download": "匯出",
+      "success": "行程已匯出",
+      "failed": "匯出失敗"
     }
   },
   "flights": {

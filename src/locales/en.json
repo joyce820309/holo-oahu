@@ -120,6 +120,11 @@
       "duration": "min",
       "noteZh":   "Transport Note (Chinese)",
       "noteEn":   "Transport Note (English)"
+    },
+    "export": {
+      "download": "Export",
+      "success": "Itinerary exported",
+      "failed": "Export failed"
     }
   },
   "flights": {

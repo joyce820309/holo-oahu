@@ -7,7 +7,7 @@ import {
   Car, Bus, Footprints, Truck, EllipsisVertical, MapPinned,
   Plane, ArrowLeftRight, RotateCcw, GripVertical, Check,
   ArrowUpCircle, ArrowDownCircle, Navigation, ExternalLink,
-  PencilLine, X, Clock, Bed,
+  PencilLine, X, Clock, Bed, Download,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
@@ -22,6 +22,7 @@ import toast from 'react-hot-toast'
 import { useActivities } from '../hooks/useActivities'
 import { useFlights } from '../hooks/useFlights'
 import { deleteFlightActivities } from '../lib/syncFlightActivities'
+import { createItineraryExportText } from '../lib/exportItinerary'
 import ConfirmDialog from '../components/ConfirmDialog'
 import NoteContent from '../components/NoteContent'
 import { ActivitiesSkeleton } from '../components/Skeleton'
@@ -104,7 +105,7 @@ function TransportConnector({ transportAfter, activityId, lang, t, navigate, set
             <EllipsisVertical size={15} />
           </button>
         </div>
-      ) : !hidden ? (
+      ) : (
         <button
           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
           style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
@@ -112,7 +113,7 @@ function TransportConnector({ transportAfter, activityId, lang, t, navigate, set
         >
           <Plus size={12} />{setTransportLabel}
         </button>
-      ) : null}
+      )}
     </div>
   )
 }
@@ -1104,7 +1105,7 @@ function DraftList({ drafts, lang, navigate, setDelId, onPromote }) {
 export default function ActivitiesPage() {
   const { t, i18n } = useTranslation()
   const { activities, loading, deleteActivity, updateActivity } = useActivities()
-  const { deleteFlight } = useFlights()
+  const { flights, deleteFlight } = useFlights()
   const navigate   = useNavigate()
   const [searchParams] = useSearchParams()
   const [delId, setDelId]         = useState(null)
@@ -1150,6 +1151,7 @@ export default function ActivitiesPage() {
     return ALL_TRIP_DATES[Math.min(idx + 1, ALL_TRIP_DATES.length - 1)] || ALL_TRIP_DATES[0]
   })
   const [statusTab, setStatusTab] = useState('confirmed')
+  const [exporting, setExporting] = useState(false)
   const [activeTab, setActiveTab] = useState(() => {
     return sessionStorage.getItem('activities_tab') || getInitialTab()
   })
@@ -1311,6 +1313,39 @@ export default function ActivitiesPage() {
     }
   }
 
+  async function handleExportItinerary() {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const textBody = createItineraryExportText({
+        activities: visibleActivities,
+        flights,
+        lang,
+        tripStartDate: TRIP_START_DATE,
+        tripEndDate: TRIP_END_DATE,
+      })
+
+      const blob = new Blob([textBody], { type: 'text/plain;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const now = new Date()
+      const fileName = `itinerary-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}.txt`
+
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = fileName
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+
+      toast.success(t('activities.export.success'))
+    } catch {
+      toast.error(t('activities.export.failed'))
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div
       className="px-4 pb-36"
@@ -1319,6 +1354,11 @@ export default function ActivitiesPage() {
       <div className="flex items-center justify-between py-4">
         <h2 className="text-primary font-medium text-xl">{t('activities.title')}</h2>
         <div className="flex items-center gap-2">
+          {statusTab === 'confirmed' && !editMode && (
+            <button onClick={handleExportItinerary} className="btn-ghost" style={{ padding: '7px 10px' }} disabled={exporting}>
+              <Download size={15} />
+            </button>
+          )}
           {statusTab === 'confirmed' && !editMode && (
             <button onClick={() => setEditSheetOpen(true)} className="btn-ghost" style={{ padding: '7px 10px' }}>
               <PencilLine size={15} />
