@@ -53,10 +53,68 @@ function bi(field, lang) {
   return field[lang === 'zh-TW' ? 'zh' : 'en'] || field.zh || field.en || ''
 }
 
+// 向下相容：舊格式單一物件，新格式陣列；只回傳非 none 的項目
+function normalizeTransport(transportAfter) {
+  if (!transportAfter) return []
+  if (Array.isArray(transportAfter)) return transportAfter.filter(t => t.mode && t.mode !== 'none')
+  if (transportAfter.mode && transportAfter.mode !== 'none') return [transportAfter]
+  return []
+}
+
+// 判斷是否明確設為「隱藏」
+function isTransportHidden(transportAfter) {
+  if (!transportAfter) return false
+  if (Array.isArray(transportAfter)) return transportAfter.some(t => t.mode === 'none')
+  return transportAfter.mode === 'none'
+}
+
 function normalizeExternalLink(value) {
   const text = String(value || '').trim()
   if (!text) return ''
   return /^https?:\/\//i.test(text) ? text : `https://${text}`
+}
+
+function TransportConnector({ transportAfter, activityId, lang, t, navigate, setTransportLabel }) {
+  const entries = normalizeTransport(transportAfter)
+  const hidden  = isTransportHidden(transportAfter)
+
+  return (
+    <div className="flex items-start gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
+      <div style={{ width: 40, flexShrink: 0 }} />
+      {entries.length > 0 ? (
+        <div className="flex-1 flex flex-wrap items-center gap-1.5 px-3 py-1.5 rounded-xl"
+          style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}>
+          {entries.map((entry, i) => {
+            const Icon = TRANSPORT_ICONS[entry.mode]
+            const label = t(`activities.transport.mode.${entry.mode}`)
+            const detail = [
+              entry.durationMin > 0 && `${entry.durationMin} ${t('activities.transport.duration')}`,
+              bi(entry.note, lang),
+            ].filter(Boolean).join(' · ')
+            return (
+              <span key={i} className="flex items-center gap-1 text-secondary" style={{ fontSize: 12 }}>
+                {i > 0 && <span style={{ color: 'var(--mini-border)', margin: '0 2px' }}>|</span>}
+                {Icon && <Icon size={12} style={{ flexShrink: 0 }} />}
+                <span>{label}{detail ? ` · ${detail}` : ''}</span>
+              </span>
+            )
+          })}
+          <button onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activityId}/transport`) }}
+            style={{ color: 'var(--text-secondary)', padding: 4, flexShrink: 0, marginLeft: 'auto' }}>
+            <EllipsisVertical size={15} />
+          </button>
+        </div>
+      ) : !hidden ? (
+        <button
+          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
+          style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
+          onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activityId}/transport`) }}
+        >
+          <Plus size={12} />{setTransportLabel}
+        </button>
+      ) : null}
+    </div>
+  )
 }
 
 function uiText(lang) {
@@ -701,9 +759,6 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
           <SortableContext items={localItems.map(a => a.id)} strategy={verticalListSortingStrategy}>
             {/* Real activities — numbered, with timeline */}
             {(editMode ? localItems : realItems).map((activity, idx) => {
-              const transportSet = !!activity.transportAfter?.mode
-              const hasTransport = transportSet && activity.transportAfter.mode !== 'none'
-              const TransIcon    = hasTransport && TRANSPORT_ICONS[activity.transportAfter.mode]
               const mapTarget    = (activity.lat && activity.lng)
                 ? `${activity.lat},${activity.lng}`
                 : (bi(activity.address, lang) ? encodeURIComponent(bi(activity.address, lang)) : null)
@@ -750,32 +805,12 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                   </div>
 
                   {!editMode && idx < listForTransport.length - 1 && (
-                    <div className="flex items-center gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
-                      <div style={{ width: 40, flexShrink: 0 }} />
-                      {hasTransport ? (
-                        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl"
-                          style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}>
-                          {TransIcon && <TransIcon size={13} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />}
-                          <span className="text-secondary flex-1" style={{ fontSize: 12 }}>
-                            {t(`activities.transport.mode.${activity.transportAfter.mode}`)}
-                            {activity.transportAfter.durationMin > 0 && ` · ${activity.transportAfter.durationMin} ${t('activities.transport.duration')}`}
-                            {bi(activity.transportAfter.note, lang) && ` · ${bi(activity.transportAfter.note, lang)}`}
-                          </span>
-                          <button onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
-                            style={{ color: 'var(--text-secondary)', padding: 4, flexShrink: 0 }}>
-                            <EllipsisVertical size={15} />
-                          </button>
-                        </div>
-                      ) : !hasTransport ? (
-                        <button
-                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
-                          style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
-                          onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
-                        >
-                          <Plus size={12} />{text.setTransport}
-                        </button>
-                      ) : null}
-                    </div>
+                    <TransportConnector
+                      transportAfter={activity.transportAfter}
+                      activityId={activity.id}
+                      lang={lang} t={t} navigate={navigate}
+                      setTransportLabel={text.setTransport}
+                    />
                   )}
                 </div>
               )
@@ -813,47 +848,18 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
             )}
 
             {/* Transport connector between flight box and first post-landing activity */}
-            {!editMode && flightItems.length > 0 && postLandingItems.length > 0 && (() => {
-              const lastFlight = flightItems[flightItems.length - 1]
-              const transportSet = !!lastFlight.transportAfter?.mode
-              const hasTransport = transportSet && lastFlight.transportAfter.mode !== 'none'
-              const TransIcon    = hasTransport && TRANSPORT_ICONS[lastFlight.transportAfter.mode]
-              return (
-                <div className="flex items-center gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
-                  <div style={{ width: 40, flexShrink: 0 }} />
-                  {hasTransport ? (
-                    <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl"
-                      style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}>
-                      {TransIcon && <TransIcon size={13} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />}
-                      <span className="text-secondary flex-1" style={{ fontSize: 12 }}>
-                        {t(`activities.transport.mode.${lastFlight.transportAfter.mode}`)}
-                        {lastFlight.transportAfter.durationMin > 0 && ` · ${lastFlight.transportAfter.durationMin} ${t('activities.transport.duration')}`}
-                        {bi(lastFlight.transportAfter.note, lang) && ` · ${bi(lastFlight.transportAfter.note, lang)}`}
-                      </span>
-                      <button onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${lastFlight.id}/transport`) }}
-                        style={{ color: 'var(--text-secondary)', padding: 4, flexShrink: 0 }}>
-                        <EllipsisVertical size={15} />
-                      </button>
-                    </div>
-                  ) : !transportSet ? (
-                    <button
-                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
-                      style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
-                      onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${lastFlight.id}/transport`) }}
-                    >
-                      <Plus size={12} />{text.setTransport}
-                    </button>
-                  ) : null}
-                </div>
-              )
-            })()}
+            {!editMode && flightItems.length > 0 && postLandingItems.length > 0 && (
+              <TransportConnector
+                transportAfter={flightItems[flightItems.length - 1].transportAfter}
+                activityId={flightItems[flightItems.length - 1].id}
+                lang={lang} t={t} navigate={navigate}
+                setTransportLabel={text.setTransport}
+              />
+            )}
 
             {/* Post-landing activities — rendered after flight box, numbered continuing from realItems */}
             {!editMode && postLandingItems.map((activity, idx) => {
               const seqNum = realItems.length + idx + 1
-              const transportSet = !!activity.transportAfter?.mode
-              const hasTransport = transportSet && activity.transportAfter.mode !== 'none'
-              const TransIcon    = hasTransport && TRANSPORT_ICONS[activity.transportAfter.mode]
               const mapTarget    = (activity.lat && activity.lng)
                 ? `${activity.lat},${activity.lng}`
                 : (bi(activity.address, lang) ? encodeURIComponent(bi(activity.address, lang)) : null)
@@ -886,32 +892,12 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                     </div>
                   </div>
                   {idx < postLandingItems.length - 1 && (
-                    <div className="flex items-center gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
-                      <div style={{ width: 40, flexShrink: 0 }} />
-                      {hasTransport ? (
-                        <div className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl"
-                          style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}>
-                          {TransIcon && <TransIcon size={13} style={{ color: 'var(--text-secondary)', flexShrink: 0 }} />}
-                          <span className="text-secondary flex-1" style={{ fontSize: 12 }}>
-                            {t(`activities.transport.mode.${activity.transportAfter.mode}`)}
-                            {activity.transportAfter.durationMin > 0 && ` · ${activity.transportAfter.durationMin} ${t('activities.transport.duration')}`}
-                            {bi(activity.transportAfter.note, lang) && ` · ${bi(activity.transportAfter.note, lang)}`}
-                          </span>
-                          <button onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
-                            style={{ color: 'var(--text-secondary)', padding: 4, flexShrink: 0 }}>
-                            <EllipsisVertical size={15} />
-                          </button>
-                        </div>
-                      ) : !hasTransport ? (
-                        <button
-                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl"
-                          style={{ border: '0.5px dashed var(--mini-border)', color: 'var(--text-secondary)', fontSize: 12, background: 'transparent' }}
-                          onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activity.id}/transport`) }}
-                        >
-                          <Plus size={12} />{text.setTransport}
-                        </button>
-                      ) : null}
-                    </div>
+                    <TransportConnector
+                      transportAfter={activity.transportAfter}
+                      activityId={activity.id}
+                      lang={lang} t={t} navigate={navigate}
+                      setTransportLabel={text.setTransport}
+                    />
                   )}
                 </div>
               )

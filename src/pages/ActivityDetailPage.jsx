@@ -30,6 +30,13 @@ function bi(field, lang) {
   return field[lang === 'zh-TW' ? 'zh' : 'en'] || field.zh || field.en || ''
 }
 
+function normalizeTransport(transportAfter) {
+  if (!transportAfter) return []
+  if (Array.isArray(transportAfter)) return transportAfter.filter(t => t.mode && t.mode !== 'none')
+  if (transportAfter.mode && transportAfter.mode !== 'none') return [transportAfter]
+  return []
+}
+
 function normalizeExternalLink(value) {
   const text = String(value || '').trim()
   if (!text) return ''
@@ -55,7 +62,6 @@ export default function ActivityDetailPage() {
   )
 
   const Icon = TYPE_ICONS[activity.type] || MapPin
-  const TransIcon = activity.transportAfter?.mode && TRANSPORT_ICONS[activity.transportAfter.mode]
   const address = bi(activity.address, lang)
   const externalLink = normalizeExternalLink(activity.link || activity.mapLink)
 
@@ -187,23 +193,36 @@ export default function ActivityDetailPage() {
         )}
 
         {/* Transport */}
-        {activity.transportAfter?.mode && activity.transportAfter.mode !== 'none' && (
-          <div className="glass-card p-4">
-            <p className="text-secondary text-xs font-medium uppercase tracking-wide mb-3">{t('activities.transport.title')}</p>
-            <div className="flex items-center gap-2">
-              {TransIcon && <TransIcon size={16} style={{ color: 'var(--accent)' }} />}
-              <span className="text-primary text-sm font-medium">
-                {t(`activities.transport.mode.${activity.transportAfter.mode}`)}
-              </span>
-              {activity.transportAfter.durationMin > 0 && (
-                <span className="text-secondary text-sm">· {activity.transportAfter.durationMin} {t('activities.transport.duration')}</span>
-              )}
+        {(() => {
+          const entries = normalizeTransport(activity.transportAfter)
+          if (entries.length === 0) return null
+          return (
+            <div className="glass-card p-4">
+              <p className="text-secondary text-xs font-medium uppercase tracking-wide mb-3">{t('activities.transport.title')}</p>
+              <div className="space-y-3">
+                {entries.map((entry, i) => {
+                  const Icon = TRANSPORT_ICONS[entry.mode]
+                  return (
+                    <div key={i}>
+                      <div className="flex items-center gap-2">
+                        {Icon && <Icon size={16} style={{ color: 'var(--accent)' }} />}
+                        <span className="text-primary text-sm font-medium">
+                          {t(`activities.transport.mode.${entry.mode}`)}
+                        </span>
+                        {entry.durationMin > 0 && (
+                          <span className="text-secondary text-sm">· {entry.durationMin} {t('activities.transport.duration')}</span>
+                        )}
+                      </div>
+                      {bi(entry.note, lang) && (
+                        <NoteContent text={bi(entry.note, lang)} className="text-secondary text-sm leading-relaxed mt-1" />
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            {bi(activity.transportAfter.note, lang) && (
-              <NoteContent text={bi(activity.transportAfter.note, lang)} className="text-secondary text-sm leading-relaxed mt-2" />
-            )}
-          </div>
-        )}
+          )
+        })()}
 
         {/* Images */}
         {activity.images?.length > 0 && (
