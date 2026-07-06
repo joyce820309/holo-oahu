@@ -654,8 +654,8 @@ export default function ActivityFormPage() {
         {/* Draft toggle */}
         <div className="glass-card p-4 flex items-center justify-between">
           <div>
-            <p className="text-primary font-medium text-sm">草稿模式</p>
-            <p className="text-secondary text-xs mt-0.5">草稿不顯示在正式行程，日期和時間可不填</p>
+            <p className="text-primary font-medium text-sm">許願清單模式</p>
+            <p className="text-secondary text-xs mt-0.5">許願清單不顯示在正式行程，日期和時間可不填</p>
           </div>
           <button
             type="button"

@@ -124,7 +124,7 @@ function uiText(lang) {
     viewDetails: zh ? '查看詳情' : 'View Details',
     edit: zh ? '編輯' : 'Edit',
     promote: zh ? '移入正式' : 'Move to Schedule',
-    demote: zh ? '退回草稿' : 'Move to Drafts',
+    demote: zh ? '移到許願清單' : 'Move to Wishlist',
     delete: zh ? '刪除' : 'Delete',
     moreOptions: zh ? '更多選項' : 'More Options',
     dayManagement: zh ? '天數管理' : 'Day Management',
@@ -141,9 +141,9 @@ function uiText(lang) {
     transit: zh ? '轉機' : 'Transit',
     returnTrip: zh ? '回程' : 'Return',
     setTransport: zh ? '設定交通' : 'Set Transport',
-    noDrafts: zh ? '尚無草稿行程' : 'No draft activities yet',
+    noDrafts: zh ? '尚無許願行程' : 'No wishlist activities yet',
     scheduleTab: zh ? '行程' : 'Schedule',
-    draftTab: zh ? '草稿' : 'Drafts',
+    draftTab: zh ? '許願清單' : 'Wishlist',
     done: zh ? '完成' : 'Done',
     reorderHint: zh ? '長按並拖拉' : 'Long press and drag',
     reorderHintSuffix: zh ? '調整同日順序' : 'to reorder the day',
@@ -711,10 +711,21 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
   const lastCrossDay = [...flightItems].reverse().find(a => a.flightId && a.endTime && a.endTime < a.startTime)
   const landingTime  = lastCrossDay?.endTime ?? null
 
-  // On a flight day, ALL non-flight items render BELOW the flight box (postLandingItems).
-  // realItems (rendered above the box) is only non-empty on non-flight days.
-  const realItems        = dayHasFlight ? [] : nonFlightItems
-  const postLandingItems = dayHasFlight ? nonFlightItems : []
+  // Earliest actual flight departure time, used to tell pre-flight activities
+  // (e.g. checkout, return car, airport on a departure day) from post-landing ones.
+  const flights = flightItems.filter(a => a.flightId)
+  const earliestDeparture = flights.length
+    ? flights.reduce((min, a) => (a.startTime && (!min || a.startTime < min) ? a.startTime : min), null)
+    : null
+
+  // Non-flight items scheduled before the first flight's departure render ABOVE the
+  // flight box (realItems); everything else renders BELOW it (postLandingItems).
+  const realItems        = dayHasFlight
+    ? nonFlightItems.filter(a => earliestDeparture && a.startTime && a.startTime < earliestDeparture)
+    : nonFlightItems
+  const postLandingItems = dayHasFlight
+    ? nonFlightItems.filter(a => !(earliestDeparture && a.startTime && a.startTime < earliestDeparture))
+    : []
 
   function handleDragEnd(event) {
     const { active, over } = event
@@ -816,6 +827,16 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                 </div>
               )
             })}
+
+            {/* Transport connector between last pre-flight activity and the flight box */}
+            {!editMode && realItems.length > 0 && flightItems.length > 0 && (
+              <TransportConnector
+                transportAfter={realItems[realItems.length - 1].transportAfter}
+                activityId={realItems[realItems.length - 1].id}
+                lang={lang} t={t} navigate={navigate}
+                setTransportLabel={text.setTransport}
+              />
+            )}
 
             {/* Flight group box — shown only in normal mode when there are flight activities */}
             {!editMode && flightItems.length > 0 && (
@@ -1384,21 +1405,34 @@ export default function ActivitiesPage() {
         </div>
       </div>
 
-      {/* Status tabs: 行程 / 草稿 */}
+      {/* Status tabs: 行程 / 許願清單 */}
       <div className="flex gap-1 mb-4">
         {[
-          { key: 'confirmed', label: text.scheduleTab },
-          { key: 'draft',     label: `${text.draftTab}${drafts.length > 0 ? ` ${drafts.length}` : ''}` },
-        ].map(({ key, label }) => (
+          { key: 'confirmed', label: text.scheduleTab, icon: null },
+          { key: 'draft',     label: text.draftTab, icon: Star, count: drafts.length },
+        ].map(({ key, label, icon: Icon, count }) => (
           <button
             key={key}
             onClick={() => { setStatusTab(key); setEditMode(false) }}
-            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5"
             style={statusTab === key
               ? { background: 'var(--accent)', color: 'white' }
               : { color: 'var(--text-secondary)' }
             }
-          >{label}</button>
+          >
+            {Icon && <Icon size={14} />}
+            {label}
+            {count > 0 && (
+              <span
+                className="flex items-center justify-center rounded-full text-xs font-semibold"
+                style={{
+                  minWidth: 18, height: 18, padding: '0 5px',
+                  background: statusTab === key ? 'rgba(255,255,255,0.25)' : 'var(--accent)',
+                  color: statusTab === key ? 'white' : 'white',
+                }}
+              >{count}</span>
+            )}
+          </button>
         ))}
       </div>
 
