@@ -11,7 +11,15 @@ export default function ConfirmDialog({ onConfirm, onCancel }) {
           <button className="btn-ghost" onClick={onCancel}>{t('common.cancel')}</button>
           <button
             className="btn-primary"
-            style={{ background: '#c0392b' }}
+            style={{ background: '#c0392b', transition: 'background 0.15s, filter 0.15s' }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#a93226'
+              e.currentTarget.style.filter = 'brightness(1.02)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#c0392b'
+              e.currentTarget.style.filter = 'none'
+            }}
             onClick={onConfirm}
           >{t('common.delete')}</button>
         </div>

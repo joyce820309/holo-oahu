@@ -415,6 +415,8 @@ function SortableItem({ id, children }) {
 function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote, showNoteContent = false }) {
   const text = uiText(lang)
   const isFlight = !!activity.flightId
+  const isConfirmed = (activity.status ?? 'confirmed') === 'confirmed'
+  const missingStartTime = !isFlight && isConfirmed && !activity.startTime
   const Icon     = isFlight ? Plane : (TYPE_ICONS[activity.type] || MapPin)
   const crossDay = activity.startTime && activity.endTime && activity.endTime < activity.startTime
   const noteText = bi(activity.note, lang).trim()
@@ -440,10 +442,16 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
     'aria-label': `${text.viewDetails}: ${bi(activity.title, lang)}`,
   } : {}
 
+  const missingTimeStyle = missingStartTime ? {
+    background: '#fff2f55e',
+    color: '#d5939c8c',
+    border: '3px solid #d5939c8c',
+  } : {}
+
   return (
     <div
       className="glass-card p-4"
-      style={{ ...flightStyle, cursor: cardClickable ? 'pointer' : 'default' }}
+      style={{ ...flightStyle, ...missingTimeStyle, cursor: cardClickable ? 'pointer' : 'default' }}
       {...cardInteractionProps}
     >
       <div className="flex items-start gap-3">
@@ -464,9 +472,15 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
         <div className="flex-1 min-w-0">
           <p
             className="text-primary font-medium text-base leading-snug"
-            style={!editMode && onView ? { cursor: 'pointer', transition: 'color 0.15s' } : {}}
+            style={!editMode && onView
+              ? { cursor: 'pointer', transition: 'color 0.15s', color: missingStartTime ? '#da7c88' : undefined }
+              : (missingStartTime ? { color: '#da7c88' } : {})}
             onMouseEnter={e => { if (!editMode && onView) e.currentTarget.style.color = 'var(--accent)' }}
-            onMouseLeave={e => { if (!editMode && onView) e.currentTarget.style.color = '' }}
+            onMouseLeave={e => {
+              if (!editMode && onView) {
+                e.currentTarget.style.color = missingStartTime ? '#da7c88' : ''
+              }
+            }}
             onClick={e => { if (!editMode && onView) { e.stopPropagation(); onView() } }}
           >{bi(activity.title, lang)}</p>
           {!editMode && bi(activity.address, lang) && (() => {
@@ -477,7 +491,7 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
             return (
               <div className="flex items-center gap-3 mt-1.5 min-w-0">
                 {activity.startTime && (
-                  <span className="text-secondary text-xs whitespace-nowrap">
+                  <span className="text-secondary text-xs whitespace-nowrap" style={missingStartTime ? { color: '#da7c88' } : {}}>
                     {activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}
                     {crossDay && <span style={{ marginLeft: 4, color: 'var(--accent)', fontWeight: 500 }}>+1</span>}
                   </span>
@@ -485,7 +499,7 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
                 {bi(activity.address, lang) && (
                   <button
                     className="flex items-center gap-1 min-w-0"
-                    style={{ color: 'var(--accent)', fontSize: 12, maxWidth: '100%' }}
+                    style={{ color: missingStartTime ? '#da7c88' : 'var(--accent)', fontSize: 12, maxWidth: '100%' }}
                     onClick={e => { e.stopPropagation(); window.open(`https://maps.google.com/?q=${mapTarget}`) }}
                     onMouseEnter={e => e.currentTarget.style.opacity = '0.7'}
                     onMouseLeave={e => e.currentTarget.style.opacity = '1'}
@@ -498,9 +512,14 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
             )
           })()}
           {!editMode && activity.startTime && !bi(activity.address, lang) && (
-            <p className="text-secondary text-xs mt-1.5">
+            <p className="text-secondary text-xs mt-1.5" style={missingStartTime ? { color: '#da7c88' } : {}}>
               {activity.startTime}{activity.endTime ? ` – ${activity.endTime}` : ''}
               {crossDay && <span style={{ marginLeft: 4, color: 'var(--accent)', fontWeight: 500 }}>+1</span>}
+            </p>
+          )}
+          {!editMode && missingStartTime && (
+            <p style={{ fontSize: 11, color: '#da7c88', marginTop: 4 }}>
+              {lang === 'zh-TW' ? '尚未填寫時間' : 'Time not set yet'}
             </p>
           )}
           {!editMode && isFlight && (activity.departTerminal || activity.arriveTerminal) && (
@@ -1105,7 +1124,7 @@ function DraftList({ drafts, lang, navigate, setDelId, onPromote }) {
                 )}
                 {missingTime && (
                   <p style={{ fontSize: 11, color: '#d97706', marginTop: 4 }}>
-                    {lang === 'zh-TW' ? '移入正式前請填寫時間，否則順序會亂' : 'Add a start time before promoting to keep order'}
+                    {lang === 'zh-TW' ? '可直接移入正式行程；未填時間會以粉色提醒' : 'You can promote now; missing time will be highlighted in pink'}
                   </p>
                 )}
               </div>
@@ -1300,7 +1319,38 @@ export default function ActivitiesPage() {
     }
   }
 
-  const promote = id => updateActivity(id, { status: 'confirmed' }).catch(() => {})
+  async function promote(id) {
+    const target = activities.find(a => a.id === id)
+    if (!target) return
+
+    const date = String(target.date || '').trim()
+    if (!date) {
+      toast(lang === 'zh-TW' ? '請先編輯日期後再移入正式行程' : 'Set a date before moving to schedule')
+      navigate(`/trip/activities/${id}/edit`)
+      return
+    }
+
+    try {
+      await updateActivity(id, { status: 'confirmed' })
+      const { n } = dayLabel(date)
+      const dayText = Number.isFinite(n) ? `${n}` : date
+      if (!target.startTime) {
+        toast.success(
+          lang === 'zh-TW'
+            ? `成功移入第${dayText}天但尚未填寫時間`
+            : `Moved to Day ${dayText}, but time is not set yet`
+        )
+      } else {
+        toast.success(
+          lang === 'zh-TW'
+            ? `成功移入第${dayText}天`
+            : `Moved to Day ${dayText}`
+        )
+      }
+    } catch {
+      toast.error(lang === 'zh-TW' ? '移入正式行程失敗' : 'Failed to move to schedule')
+    }
+  }
   const demote  = id => updateActivity(id, { status: 'draft'     }).catch(() => {})
 
   async function handleSortByTime(targetDate) {
