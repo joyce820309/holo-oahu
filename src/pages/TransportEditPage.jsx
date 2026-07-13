@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Car, Bus, Footprints, Truck, BanIcon, Bed, X } from 'lucide-react'
+import { ArrowLeft, Car, Bus, Footprints, Truck, BanIcon, Bed, X, SearchX } from 'lucide-react'
 import { useActivities } from '../hooks/useActivities'
 import { useHotels } from '../hooks/useHotels'
 import toast from 'react-hot-toast'
@@ -37,7 +37,7 @@ export default function TransportEditPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams()
-  const { activities, updateActivity } = useActivities()
+  const { activities, loading, updateActivity } = useActivities()
   const { hotels } = useHotels()
   const lang = i18n.language
 
@@ -75,9 +75,21 @@ export default function TransportEditPage() {
     }
   }, [activity])
 
-  if (!activity) return (
+  if (!activity && loading) return (
     <div className="px-4 py-8 text-center">
       <p className="text-secondary">{t('common.loading')}</p>
+    </div>
+  )
+
+  if (!activity) return (
+    <div className="px-4 py-16 flex flex-col items-center text-center gap-3">
+      <SearchX size={40} style={{ color: 'var(--text-secondary)' }} />
+      <p className="text-primary text-base font-medium">找不到這個活動</p>
+      <p className="text-secondary text-sm">它可能已經被刪除或連結已失效</p>
+      <button
+        onClick={() => navigate('/trip/activities')}
+        className="btn-primary mt-2"
+      >回到活動行程</button>
     </div>
   )
 
@@ -112,18 +124,31 @@ export default function TransportEditPage() {
       if (hidden) {
         value = [{ mode: 'none' }]
       } else if (entries.length === 0) {
+        const hadExisting = normalizeTransport(activity.transportAfter).length > 0
+        if (hadExisting && !window.confirm('尚未選擇任何交通方式，儲存後將清除原有的交通設定，確定要儲存嗎？')) {
+          return
+        }
         value = null
       } else {
-        value = entries.map(e => ({
+        value = entries.filter(e => e.mode).map(e => ({
           mode: e.mode,
           durationMin: e.durationMin ? parseInt(e.durationMin) : 0,
-          note: e.note,
+          note: { zh: e.note?.zh || '', en: e.note?.en || '' },
         }))
+        if (value.length === 0) value = null
       }
       await updateActivity(id, { transportAfter: value })
       toast.success('已儲存')
       navigate(-1)
-    } catch { toast.error('儲存失敗') }
+    } catch (err) {
+      console.error('[TransportEditPage] save failed:', err.code, err.message)
+      if (err.code === 'not-found') {
+        toast.error('此活動已被刪除')
+        navigate('/trip/activities')
+      } else {
+        toast.error('儲存失敗')
+      }
+    }
   }
 
   return (
@@ -199,7 +224,11 @@ export default function TransportEditPage() {
             <label className="text-secondary text-sm">交通方式（可多選）</label>
             {(entries.length > 0 || hidden) && (
               <button
-                onClick={() => { setEntries([]); setHidden(false) }}
+                onClick={() => {
+                  if (window.confirm('確定要清除所有交通設定嗎？')) {
+                    setEntries([]); setHidden(false)
+                  }
+                }}
                 className="text-xs"
                 style={{ color: 'var(--text-secondary)', transition: 'opacity 0.15s' }}
                 onMouseEnter={e => e.currentTarget.style.opacity = '0.5'}

@@ -226,7 +226,7 @@ export default function MapPage() {
   // 當天行程 markers（有座標、非系統活動、按時間排序）
   const dayActivityMarkers = useMemo(() => {
     return activities
-      .filter(a => a.date === selectedDate && !a.flightId && !a._hotelAnchor)
+      .filter(a => a.date === selectedDate && !a.flightId && !a._hotelAnchor && !a.alternativeFor)
       .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
       .map(resolveCoords)
       .filter(Boolean)

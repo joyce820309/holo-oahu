@@ -2,7 +2,7 @@
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, Check, Loader2, Copy, MoveRight, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Check, Loader2, Copy, MoveRight, AlertTriangle, CloudRain } from 'lucide-react'
 import { useActivities } from '../hooks/useActivities'
 import ImageUploader from '../components/ImageUploader'
 import toast from 'react-hot-toast'
@@ -41,6 +41,36 @@ function normalizeExternalLink(value) {
   const text = String(value || '').trim()
   if (!text) return ''
   return /^https?:\/\//i.test(text) ? text : `https://${text}`
+}
+
+function normalizeTransportAfterForSave(transportAfter) {
+  if (transportAfter == null) return null
+
+  if (Array.isArray(transportAfter)) {
+    return transportAfter
+      .filter(entry => entry && typeof entry === 'object')
+      .map(entry => ({
+        ...entry,
+        durationMin: entry.durationMin ? parseInt(entry.durationMin, 10) : 0,
+        note: {
+          zh: entry.note?.zh || '',
+          en: entry.note?.en || '',
+        },
+      }))
+  }
+
+  if (typeof transportAfter === 'object') {
+    return {
+      ...transportAfter,
+      durationMin: transportAfter.durationMin ? parseInt(transportAfter.durationMin, 10) : 0,
+      note: {
+        zh: transportAfter.note?.zh || '',
+        en: transportAfter.note?.en || '',
+      },
+    }
+  }
+
+  return null
 }
 
 function CustomSelect({ value, onChange, options, placeholder = '—' }) {
@@ -433,8 +463,22 @@ function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZh
 
 // 'copy' | 'move' | null
 function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
-  const [selected, setSelected] = useState(currentDate || '')
   const isCopy = mode === 'copy'
+  const [selected, setSelected] = useState(() => (isCopy ? [] : (currentDate || '')))
+
+  const toggleDate = (value, disabled) => {
+    if (disabled) return
+    if (!isCopy) {
+      setSelected(value)
+      return
+    }
+    setSelected(prev => prev.includes(value)
+      ? prev.filter(d => d !== value)
+      : [...prev, value])
+  }
+
+  const selectedCount = isCopy ? selected.length : (selected ? 1 : 0)
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
@@ -454,15 +498,15 @@ function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
 
         <div className="grid grid-cols-3 gap-2">
           {TRIP_DAYS.map(({ value, label }) => {
-            const isActive  = value === selected
+            const isActive  = isCopy ? selected.includes(value) : value === selected
             const isCurrent = value === currentDate
-            const disabled  = isCurrent && !isCopy
+            const disabled  = isCurrent
             // label format: "07-18 第1天" → split at space
             const [dateStr, dayStr] = label.split(' ')
             return (
               <button
                 key={value}
-                onClick={() => !disabled && setSelected(value)}
+                onClick={() => toggleDate(value, disabled)}
                 className="rounded-xl border flex flex-col items-center justify-center gap-0.5"
                 style={{
                   padding: '10px 4px',
@@ -484,11 +528,13 @@ function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
 
         <button
           className="btn-primary w-full justify-center"
-          disabled={!selected || (!isCopy && selected === currentDate)}
+          disabled={selectedCount === 0}
           onClick={() => onConfirm(selected)}
         >
           {isCopy ? <Copy size={16} /> : <MoveRight size={16} />}
-          {isCopy ? '複製到此日' : '移動到此日'}
+          {isCopy
+            ? `複製到 ${selectedCount} 天`
+            : '移動到此日'}
         </button>
       </div>
     </div>
@@ -555,11 +601,12 @@ export default function ActivityFormPage() {
       const a = activities.find(x => x.id === id)
       if (a) {
         setIsDraft(a.status === 'draft')
+        const hasTransportAfter = Object.prototype.hasOwnProperty.call(a, 'transportAfter')
         setForm({
           ...emptyForm(),
           ...a,
           link: a.link || a.mapLink || '',
-          transportAfter: a.transportAfter || emptyForm().transportAfter,
+          transportAfter: hasTransportAfter ? a.transportAfter : emptyForm().transportAfter,
         })
       }
     }
@@ -573,32 +620,66 @@ export default function ActivityFormPage() {
     return f
   })
 
-  const handleDateAction = async (targetDate) => {
+  const handleDateAction = async (targetDateOrDates) => {
     const mode = dateSheet
     setDateSheet(null)
+    const targetDates = Array.isArray(targetDateOrDates)
+      ? targetDateOrDates
+      : [targetDateOrDates]
+
     const { mapLink, ...restForm } = form
-    const data = {
+    const buildData = (date) => ({
       ...restForm,
-      date: targetDate,
+      date,
       link: normalizeExternalLink(form.link || form.mapLink),
       lat: form.lat ? parseFloat(form.lat) : null,
       lng: form.lng ? parseFloat(form.lng) : null,
-      transportAfter: {
-        ...form.transportAfter,
-        durationMin: form.transportAfter.durationMin ? parseInt(form.transportAfter.durationMin) : 0,
-      },
-    }
+      transportAfter: normalizeTransportAfterForSave(form.transportAfter),
+    })
+
     try {
       if (mode === 'copy') {
-        await addActivity(data)
-        toast.success(`已複製到 ${targetDate}`)
+        const copyDates = targetDates.filter(Boolean)
+        if (copyDates.length === 0) return
+        const refs = await Promise.all(copyDates.map(date => addActivity(buildData(date))))
+        toast.success(`已複製到 ${copyDates.length} 天`)
+        if (refs.length === 1) {
+          navigate(`/trip/activities/${refs[0].id}/edit`)
+        } else {
+          navigate('/trip/activities')
+        }
       } else {
+        const targetDate = targetDates[0]
+        if (!targetDate) return
         await updateActivity(id, { date: targetDate })
         toast.success(`已移動到 ${targetDate}`)
         navigate('/trip/activities')
       }
     } catch {
       toast.error('操作失敗')
+    }
+  }
+
+  const addBackupPlan = async () => {
+    try {
+      const newId = await addActivity({
+        title: { zh: '', en: '' },
+        location: { zh: '', en: '' },
+        address: { zh: '', en: '' },
+        note: { zh: '', en: '' },
+        type: form.type,
+        date: form.date,
+        startTime: '', endTime: '',
+        lat: null, lng: null, link: '',
+        segmentId: form.segmentId, order: 0,
+        images: [],
+        status: 'confirmed',
+        alternativeFor: id,
+        transportAfter: { mode: 'none', durationMin: '', note: { zh: '', en: '' } },
+      })
+      navigate(`/trip/activities/${newId.id}/edit`)
+    } catch {
+      toast.error('新增失敗')
     }
   }
 
@@ -615,10 +696,7 @@ export default function ActivityFormPage() {
       link: normalizeExternalLink(form.link || form.mapLink),
       lat: form.lat ? parseFloat(form.lat) : null,
       lng: form.lng ? parseFloat(form.lng) : null,
-      transportAfter: {
-        ...form.transportAfter,
-        durationMin: form.transportAfter.durationMin ? parseInt(form.transportAfter.durationMin) : 0,
-      },
+      transportAfter: normalizeTransportAfterForSave(form.transportAfter),
     }
     try {
       if (isNew) {
@@ -650,6 +728,13 @@ export default function ActivityFormPage() {
       </div>
 
       <div className="space-y-4">
+
+        {form.alternativeFor && (
+          <div className="glass-card p-4 flex items-center gap-2.5" style={{ background: 'color-mix(in srgb, #0ea5e9 6%, var(--glass-bg))', border: '0.5px solid color-mix(in srgb, #0ea5e9 30%, transparent)' }}>
+            <CloudRain size={16} style={{ color: '#0369a1', flexShrink: 0 }} />
+            <p className="text-sm" style={{ color: '#0369a1' }}>這是雨備方案，會顯示在原活動卡片的展開內容中</p>
+          </div>
+        )}
 
         {/* Draft toggle */}
         <div className="glass-card p-4 flex items-center justify-between">
@@ -794,6 +879,16 @@ export default function ActivityFormPage() {
               <MoveRight size={15} />移動到其他日
             </button>
           </div>
+        )}
+
+        {!isNew && !form.alternativeFor && (
+          <button
+            className="btn-ghost w-full justify-center"
+            onClick={addBackupPlan}
+            style={{ fontSize: 13 }}
+          >
+            <CloudRain size={15} />新增雨備方案
+          </button>
         )}
 
         <div className="flex gap-3">

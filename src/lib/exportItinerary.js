@@ -54,6 +54,14 @@ function formatTimeRange(startTime, endTime) {
   return ''
 }
 
+function isFlightGeneratedActivity(raw, lang) {
+  if (!raw) return false
+  if (raw.flightId) return true
+  if (raw.flightRole && ['depart', 'arrive', 'transit'].includes(raw.flightRole)) return true
+  const title = bi(raw.title, lang)
+  return title.startsWith('✈')
+}
+
 export function normalizeExportItem(raw, lang) {
   const isFlight = !!raw.flightNo || !!raw.departAt || !!raw.arriveAt
   if (!isFlight) {
@@ -64,6 +72,7 @@ export function normalizeExportItem(raw, lang) {
       endTime: toTimeOnly(raw.endTime),
       title: bi(raw.title, lang),
       status: raw.status || 'confirmed',
+      segmentId: raw.segmentId || '',
     }
   }
 
@@ -144,9 +153,25 @@ export function groupByTripDay(items, tripStartDate, tripEndDate) {
 }
 
 export function renderDayLine(dayBucket, dayIndex, lang) {
+  // 兩個區域的時間序：機票 + 轉機段活動依時間交錯排列，集中在前面；
+  // 其餘正式行程依時間排序放在後面。
+  const transitActivities = dayBucket.activities.filter(a => a.segmentId === 'transit')
+  const restActivities    = dayBucket.activities.filter(a => a.segmentId !== 'transit')
+
+  const flightGroup = [
+    ...dayBucket.flights.map(f => ({
+      sortTime: f.kind === 'depart' ? f.departTime : f.arriveTime,
+      label: flightSegmentLabel(f, f.kind, lang),
+    })),
+    ...transitActivities.map(a => ({
+      sortTime: a.startTime,
+      label: activitySegmentLabel(a),
+    })),
+  ].sort((a, b) => (a.sortTime || '99:99').localeCompare(b.sortTime || '99:99'))
+
   const parts = [
-    ...dayBucket.flights.map(f => flightSegmentLabel(f, f.kind, lang)).filter(Boolean),
-    ...dayBucket.activities.map(activitySegmentLabel).filter(Boolean),
+    ...flightGroup.map(x => x.label).filter(Boolean),
+    ...restActivities.map(activitySegmentLabel).filter(Boolean),
   ]
   const md = formatMD(dayBucket.date)
   return `Day${dayIndex + 1} (${md})：${parts.join('、')}`
@@ -166,6 +191,8 @@ export function createItineraryExportText(input) {
   } = input || {}
 
   const normalizedActivities = activities
+    .filter(activity => !isFlightGeneratedActivity(activity, lang))
+    .filter(activity => !activity.alternativeFor)
     .map(activity => normalizeExportItem(activity, lang))
     .filter(item => item.type === 'activity')
     .filter(item => (item.status || 'confirmed') === 'confirmed')

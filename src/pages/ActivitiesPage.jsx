@@ -7,7 +7,7 @@ import {
   Car, Bus, Footprints, Truck, EllipsisVertical, MapPinned,
   Plane, ArrowLeftRight, RotateCcw, GripVertical, Check,
   ArrowUpCircle, ArrowDownCircle, Navigation, ExternalLink,
-  PencilLine, X, Clock, Bed, Download,
+  PencilLine, X, Clock, Bed, Download, CloudRain, ChevronDown,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
@@ -82,7 +82,16 @@ function TransportConnector({ transportAfter, activityId, lang, t, navigate, set
   return (
     <div className="flex items-start gap-3 my-1" style={{ zIndex: 1, position: 'relative' }}>
       <div style={{ width: 40, flexShrink: 0 }} />
-      {entries.length > 0 ? (
+      {hidden ? (
+        <button
+          className="flex-1 flex items-center justify-center"
+          style={{ height: 6, border: 'none', background: 'transparent', cursor: 'pointer' }}
+          onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activityId}/transport`) }}
+          aria-label={lang === 'zh-TW' ? '交通已隱藏，點擊復原' : 'Transport hidden, click to restore'}
+        >
+          <span style={{ width: '100%', height: 1, background: 'var(--mini-border)', opacity: 0.6 }} />
+        </button>
+      ) : entries.length > 0 ? (
         <div className="flex-1 flex flex-wrap items-center gap-1.5 px-3 py-1.5 rounded-xl"
           style={{ background: 'var(--mini-bg)', border: '0.5px solid var(--mini-border)' }}>
           {entries.map((entry, i) => {
@@ -412,7 +421,7 @@ function SortableItem({ id, children }) {
 }
 
 // ── Activity card ──────────────────────────────────────────────────────────
-function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote, showNoteContent = false }) {
+function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote, showNoteContent = false, backupPlan, onViewBackup }) {
   const text = uiText(lang)
   const isFlight = !!activity.flightId
   const isConfirmed = (activity.status ?? 'confirmed') === 'confirmed'
@@ -421,6 +430,7 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
   const crossDay = activity.startTime && activity.endTime && activity.endTime < activity.startTime
   const noteText = bi(activity.note, lang).trim()
   const externalLink = normalizeExternalLink(activity.link || activity.mapLink)
+  const [backupOpen, setBackupOpen] = useState(false)
 
   const flightStyle = isFlight ? {
     background: 'color-mix(in srgb, var(--accent) 6%, var(--glass-bg))',
@@ -591,6 +601,53 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
               {lang === 'zh-TW' ? '備註' : 'Note'}
             </span>
           ))}
+          {!editMode && backupPlan && (
+            <div className="mt-2">
+              <button
+                onClick={e => { e.stopPropagation(); setBackupOpen(v => !v) }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                style={{
+                  fontSize: 11, lineHeight: 1.2, fontWeight: 500,
+                  color: '#0369a1',
+                  background: 'color-mix(in srgb, #0ea5e9 12%, transparent)',
+                  border: '0.5px solid color-mix(in srgb, #0ea5e9 35%, transparent)',
+                  cursor: 'pointer',
+                }}
+              >
+                <CloudRain size={11} />
+                {lang === 'zh-TW' ? '雨備方案' : 'Rain plan'}
+                <ChevronDown size={11} style={{ transform: backupOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+              </button>
+              {backupOpen && (
+                <div
+                  className="mt-1.5 px-2.5 py-2"
+                  style={{
+                    fontSize: 12, lineHeight: 1.4,
+                    color: 'var(--text-secondary)',
+                    background: 'color-mix(in srgb, #0ea5e9 6%, var(--mini-bg))',
+                    border: '0.5px solid color-mix(in srgb, #0ea5e9 20%, transparent)',
+                    borderRadius: 10,
+                  }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <p className="text-primary font-medium" style={{ fontSize: 12.5 }}>{bi(backupPlan.title, lang)}</p>
+                  {bi(backupPlan.location, lang) && (
+                    <p className="mt-0.5">{bi(backupPlan.location, lang)}</p>
+                  )}
+                  {bi(backupPlan.note, lang) && (
+                    <p className="mt-1">{bi(backupPlan.note, lang)}</p>
+                  )}
+                  <button
+                    onClick={() => onViewBackup ? onViewBackup(backupPlan.id) : null}
+                    className="mt-1.5"
+                    style={{ color: '#0369a1', fontSize: 11.5, fontWeight: 500, cursor: 'pointer' }}
+                  >
+                    {lang === 'zh-TW' ? '查看完整內容 →' : 'View details →'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {!editMode && (
           <CardMenu onView={onView} onEdit={onEdit} onDelete={onDelete} onPromote={onPromote} onDemote={onDemote} />
@@ -717,14 +774,21 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
   const isReturn  = segments.has('return')
   const activeItem = activeId ? localItems.find(a => a.id === activeId) : null
 
+  // Backup/rain-plan activities are attached to their original's card instead of
+  // rendering as their own row in the timeline.
+  const backupByOriginalId = new Map(
+    localItems.filter(a => a.alternativeFor).map(a => [a.alternativeFor, a])
+  )
+  const scheduledItems = localItems.filter(a => !a.alternativeFor)
+
   // Items belong in the flight box if they have a flightId, or are transit/return segments
   // on a day that has at least one actual flight
-  const dayHasFlight = localItems.some(a => a.flightId)
+  const dayHasFlight = scheduledItems.some(a => a.flightId)
   const isFlightBoxItem = a => a.flightId || (dayHasFlight && (a.segmentId === 'transit' || a.segmentId === 'return'))
 
-  const flightItems    = localItems.filter(a =>  isFlightBoxItem(a))
+  const flightItems    = scheduledItems.filter(a =>  isFlightBoxItem(a))
     .sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''))
-  const nonFlightItems = localItems.filter(a => !isFlightBoxItem(a))
+  const nonFlightItems = scheduledItems.filter(a => !isFlightBoxItem(a))
 
   // Landing time = endTime of the last crossday flight (e.g. "10:40" next morning)
   const lastCrossDay = [...flightItems].reverse().find(a => a.flightId && a.endTime && a.endTime < a.startTime)
@@ -829,6 +893,8 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                         <ActivityCard activity={activity} lang={lang} editMode={false}
                           showNoteContent={showNoteContent}
                           onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
+                          backupPlan={backupByOriginalId.get(activity.id)}
+                          onViewBackup={backupId => navigate(`/trip/activities/${backupId}`)}
                           {...cardActions}
                         />
                       )}
@@ -878,7 +944,10 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <ActivityCard activity={activity} lang={lang} editMode={false} showNoteContent={showNoteContent} {...cardActions} />
+                          <ActivityCard activity={activity} lang={lang} editMode={false} showNoteContent={showNoteContent}
+                            backupPlan={backupByOriginalId.get(activity.id)}
+                            onViewBackup={backupId => navigate(`/trip/activities/${backupId}`)}
+                            {...cardActions} />
                         </div>
                       </div>
                       {idx < flightItems.length - 1 && <div style={{ height: 8 }} />}
@@ -928,6 +997,8 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                       <ActivityCard activity={activity} lang={lang} editMode={false}
                         showNoteContent={showNoteContent}
                         onMapOpen={mapTarget ? () => window.open(`https://maps.google.com/?q=${mapTarget}`) : null}
+                        backupPlan={backupByOriginalId.get(activity.id)}
+                        onViewBackup={backupId => navigate(`/trip/activities/${backupId}`)}
                         {...cardActions}
                       />
                     </div>
