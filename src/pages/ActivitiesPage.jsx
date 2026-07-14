@@ -7,7 +7,7 @@ import {
   Car, Bus, Footprints, Truck, EllipsisVertical, MapPinned,
   Plane, ArrowLeftRight, RotateCcw, GripVertical, Check,
   ArrowUpCircle, ArrowDownCircle, Navigation, ExternalLink,
-  PencilLine, X, Clock, Bed, Download, CloudRain, ChevronDown,
+  PencilLine, X, Clock, Bed, Download, CloudRain, ChevronDown, Copy,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor,
@@ -110,7 +110,7 @@ function TransportConnector({ transportAfter, activityId, lang, t, navigate, set
             )
           })}
           <button onClick={e => { e.stopPropagation(); navigate(`/trip/activities/${activityId}/transport`) }}
-            style={{ color: 'var(--text-secondary)', padding: 4, flexShrink: 0, marginLeft: 'auto' }}>
+            style={{ color: 'var(--text-secondary)', padding: 4, flexShrink: 0, marginLeft: 'auto', paddingRight: 12 }}>
             <EllipsisVertical size={15} />
           </button>
         </div>
@@ -132,6 +132,7 @@ function uiText(lang) {
   return {
     viewDetails: zh ? '查看詳情' : 'View Details',
     edit: zh ? '編輯' : 'Edit',
+    copy: zh ? '複製' : 'Copy',
     promote: zh ? '移入正式' : 'Move to Schedule',
     demote: zh ? '移到許願清單' : 'Move to Wishlist',
     delete: zh ? '刪除' : 'Delete',
@@ -225,7 +226,7 @@ function avoidFlightWindows(activity, windows) {
 }
 
 
-function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
+function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote, onCopy }) {
   const { i18n } = useTranslation()
   const text = uiText(i18n.language)
   const [open, setOpen] = useState(false)
@@ -271,6 +272,7 @@ function CardMenu({ onView, onEdit, onDelete, onPromote, onDemote }) {
   const items = [
     { label: text.viewDetails, Icon: MapPinned,       action: onView,    show: !!onView    },
     { label: text.edit,        Icon: Pencil,           action: onEdit,    show: true        },
+    { label: text.copy,        Icon: Copy,             action: onCopy,    show: !!onCopy    },
     { label: text.promote,     Icon: ArrowUpCircle,    action: onPromote, show: !!onPromote },
     { label: text.demote,      Icon: ArrowDownCircle,  action: onDemote,  show: !!onDemote  },
     { label: text.delete,      Icon: Trash2,           action: onDelete,  show: true, danger: true },
@@ -421,7 +423,7 @@ function SortableItem({ id, children }) {
 }
 
 // ── Activity card ──────────────────────────────────────────────────────────
-function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote, showNoteContent = false, backupPlan, onViewBackup }) {
+function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, onEdit, onDelete, onView, onPromote, onDemote, onCopy, showNoteContent = false, backupPlan, onViewBackup }) {
   const text = uiText(lang)
   const isFlight = !!activity.flightId
   const isConfirmed = (activity.status ?? 'confirmed') === 'confirmed'
@@ -650,7 +652,7 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
           )}
         </div>
         {!editMode && (
-          <CardMenu onView={onView} onEdit={onEdit} onDelete={onDelete} onPromote={onPromote} onDemote={onDemote} />
+          <CardMenu onView={onView} onEdit={onEdit} onDelete={onDelete} onPromote={onPromote} onDemote={onDemote} onCopy={onCopy} />
         )}
       </div>
     </div>
@@ -756,7 +758,7 @@ function DaySwapDialog({ lang, dates, fromDate, toDate, setFromDate, setToDate, 
 }
 
 // ── Date group ─────────────────────────────────────────────────────────────
-function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder, onDemote, showNoteContent }) {
+function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder, onDemote, onCopy, showNoteContent }) {
   const { t } = useTranslation()
   const text = uiText(lang)
   const [localItems, setLocalItems] = useState(items)
@@ -862,6 +864,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                 onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
                 onDelete: () => setDelId(activity.id),
                 onDemote: onDemote ? () => onDemote(activity.id) : undefined,
+                onCopy:   onCopy ? () => onCopy(activity.id) : undefined,
               }
               const listForTransport = editMode ? localItems : realItems
 
@@ -978,6 +981,7 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
                 onEdit:   () => navigate(`/trip/activities/${activity.id}/edit`),
                 onDelete: () => setDelId(activity.id),
                 onDemote: onDemote ? () => onDemote(activity.id) : undefined,
+                onCopy:   onCopy ? () => onCopy(activity.id) : undefined,
               }
               return (
                 <div key={activity.id}>
@@ -1215,13 +1219,14 @@ function DraftList({ drafts, lang, navigate, setDelId, onPromote }) {
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function ActivitiesPage() {
   const { t, i18n } = useTranslation()
-  const { activities, loading, deleteActivity, updateActivity } = useActivities()
+  const { activities, loading, addActivity, deleteActivity, updateActivity } = useActivities()
   const { flights, deleteFlight } = useFlights()
   const navigate   = useNavigate()
   const [searchParams] = useSearchParams()
   const [delId, setDelId]         = useState(null)
   const [deletingIds, setDeletingIds] = useState(() => new Set())
   const [editMode, setEditMode]   = useState(false)
+  const copying = useRef(new Set())
   useEffect(() => {
     document.body.classList.toggle('edit-mode', editMode)
     return () => document.body.classList.remove('edit-mode')
@@ -1378,7 +1383,8 @@ export default function ActivitiesPage() {
       } else {
         await deleteActivity(target.id)
       }
-    } catch {
+    } catch (err) {
+      console.error('[ActivitiesPage] delete failed:', err.code, err.message)
       setDeletingIds(prev => {
         const next = new Set(prev)
         optimisticIds.forEach(id => next.delete(id))
@@ -1387,6 +1393,29 @@ export default function ActivitiesPage() {
       toast.error(text.deleteFailed)
     } finally {
       setDelId(null)
+    }
+  }
+
+  async function handleCopyActivity(activityId) {
+    if (copying.current.has(activityId)) return
+    copying.current.add(activityId)
+    try {
+      const target = activities.find(a => a.id === activityId)
+      if (!target) {
+        toast.error(text.deleteFailed)
+        return
+      }
+      const rest = { ...target }
+      delete rest.id
+      delete rest.createdAt
+      const ref = await addActivity(rest)
+      toast.success(lang === 'zh-TW' ? '已複製一份到同一天' : 'Copied within the same day')
+      navigate(`/trip/activities/${ref.id}/edit`)
+    } catch (err) {
+      console.error('[ActivitiesPage] copy failed:', err.code, err.message)
+      toast.error(lang === 'zh-TW' ? '複製失敗' : 'Copy failed')
+    } finally {
+      copying.current.delete(activityId)
     }
   }
 
@@ -1591,6 +1620,7 @@ export default function ActivitiesPage() {
               showNoteContent={activeTab !== 'all'}
               onReorder={(reordered) => handleReorder(date, reordered)}
               onDemote={demote}
+              onCopy={handleCopyActivity}
             />
           ))}
 

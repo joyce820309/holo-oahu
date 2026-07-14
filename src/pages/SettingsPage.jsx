@@ -2,8 +2,9 @@
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../contexts/ThemeContext'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, Pencil, Check, X } from 'lucide-react'
+import { LogOut, Pencil, Check, X, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { clearFirestoreCache } from '../lib/firebase'
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation()
@@ -18,6 +19,20 @@ export default function SettingsPage() {
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput]     = useState('')
   const [savingName, setSavingName]   = useState(false)
+  const [clearingCache, setClearingCache] = useState(false)
+
+  const handleClearCache = async () => {
+    if (clearingCache) return
+    if (!window.confirm('確定要清除本地快取嗎？頁面將重新整理，需要重新從網路載入資料。')) return
+    setClearingCache(true)
+    try {
+      await clearFirestoreCache()
+      window.location.reload()
+    } catch {
+      toast.error('清除快取失敗，請確認已關閉其他分頁後再試一次')
+      setClearingCache(false)
+    }
+  }
 
   const startEdit = () => {
     setNameInput(user?.displayName || '')
@@ -149,6 +164,22 @@ export default function SettingsPage() {
             >{label}</button>
           ))}
         </div>
+      </div>
+
+      {/* Reload */}
+      <div className="glass-card p-4 mb-4">
+        <p className="text-primary font-medium mb-1">重新整理資料</p>
+        <p className="text-secondary text-sm mb-3">
+          若行程資料顯示異常（例如已刪除的項目仍然出現），可嘗試重新整理，從伺服器重新讀取最新資料。
+        </p>
+        <button
+          className="btn-ghost w-full justify-center"
+          onClick={handleClearCache}
+          disabled={clearingCache}
+        >
+          <RefreshCw size={16} className={clearingCache ? 'animate-spin' : ''} />
+          {clearingCache ? '處理中…' : '重新整理'}
+        </button>
       </div>
 
       <div className="glass-mini p-4 text-center space-y-1">

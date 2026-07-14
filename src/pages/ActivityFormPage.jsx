@@ -465,6 +465,7 @@ function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZh
 function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
   const isCopy = mode === 'copy'
   const [selected, setSelected] = useState(() => (isCopy ? [] : (currentDate || '')))
+  const [confirming, setConfirming] = useState(false)
 
   const toggleDate = (value, disabled) => {
     if (disabled) return
@@ -500,13 +501,13 @@ function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
           {TRIP_DAYS.map(({ value, label }) => {
             const isActive  = isCopy ? selected.includes(value) : value === selected
             const isCurrent = value === currentDate
-            const disabled  = isCurrent
-            // label format: "07-18 第1天" → split at space
+            // 同日不再 disable：複製到同一天可用於「同活動拆兩段、中間插入其他行程」等情境，
+            // 只用顏色標示這是原本所在的日期，不阻擋點選。
             const [dateStr, dayStr] = label.split(' ')
             return (
               <button
                 key={value}
-                onClick={() => toggleDate(value, disabled)}
+                onClick={() => toggleDate(value, false)}
                 className="rounded-xl border flex flex-col items-center justify-center gap-0.5"
                 style={{
                   padding: '10px 4px',
@@ -514,8 +515,7 @@ function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
                   color: isActive ? 'white' : isCurrent ? 'var(--accent)' : 'var(--text-primary)',
                   borderColor: isActive ? 'var(--accent)' : isCurrent ? 'color-mix(in srgb, var(--accent) 60%, transparent)' : 'var(--mini-border)',
                   fontWeight: isActive || isCurrent ? 600 : 400,
-                  opacity: disabled ? 0.35 : 1,
-                  cursor: disabled ? 'not-allowed' : 'pointer',
+                  cursor: 'pointer',
                   fontSize: 13,
                 }}
               >
@@ -528,8 +528,16 @@ function DatePickerSheet({ mode, currentDate, onConfirm, onClose }) {
 
         <button
           className="btn-primary w-full justify-center"
-          disabled={selectedCount === 0}
-          onClick={() => onConfirm(selected)}
+          disabled={selectedCount === 0 || confirming}
+          onClick={async () => {
+            if (confirming) return
+            setConfirming(true)
+            try {
+              await onConfirm(selected)
+            } finally {
+              setConfirming(false)
+            }
+          }}
         >
           {isCopy ? <Copy size={16} /> : <MoveRight size={16} />}
           {isCopy
@@ -554,7 +562,7 @@ export default function ActivityFormPage() {
   const { id }      = useParams()
   const [searchParams] = useSearchParams()
   const isNew       = !id || id === 'new'
-  const { activities, addActivity, updateActivity } = useActivities()
+  const { activities, loading, addActivity, updateActivity } = useActivities()
   const [form, setForm]           = useState(emptyForm())
   const [isDraft, setIsDraft]     = useState(() => searchParams.get('draft') === '1')
   const [inputLang, setInputLang] = useState('zh')
@@ -584,7 +592,9 @@ export default function ActivityFormPage() {
       const aStart = timeToMinutes(a.startTime)
       const aEnd   = a.endTime ? timeToMinutes(a.endTime) : aStart + 1
       if (aStart === null) return false
-      return myStart < aEnd && myEnd > aStart
+      // 首尾相接（例如 10:00-12:00 接 12:00-14:00）視為合理銜接，不算重疊
+      if (myStart >= aEnd || myEnd <= aStart) return false
+      return true
     })
     if (overlapping.length === 0) return null
     const names = overlapping.map(a => {
@@ -655,12 +665,20 @@ export default function ActivityFormPage() {
         toast.success(`已移動到 ${targetDate}`)
         navigate('/trip/activities')
       }
-    } catch {
-      toast.error('操作失敗')
+    } catch (err) {
+      console.error('[ActivityFormPage] date action failed:', err.code, err.message)
+      if (err.code === 'not-found') {
+        toast.error('此活動已被刪除')
+        navigate('/trip/activities')
+      } else {
+        toast.error('操作失敗')
+      }
     }
   }
 
   const addBackupPlan = async () => {
+    if (submitting.current) return
+    submitting.current = true
     try {
       const newId = await addActivity({
         title: { zh: '', en: '' },
@@ -678,8 +696,11 @@ export default function ActivityFormPage() {
         transportAfter: { mode: 'none', durationMin: '', note: { zh: '', en: '' } },
       })
       navigate(`/trip/activities/${newId.id}/edit`)
-    } catch {
+    } catch (err) {
+      console.error('[ActivityFormPage] add backup plan failed:', err.code, err.message)
       toast.error('新增失敗')
+    } finally {
+      submitting.current = false
     }
   }
 
@@ -708,13 +729,33 @@ export default function ActivityFormPage() {
         toast.success('已儲存')
         navigate('/trip/activities')
       }
-    } catch {
+    } catch (err) {
+      console.error('[ActivityFormPage] submit failed:', err.code, err.message)
+      if (err.code === 'not-found') {
+        toast.error('此活動已被刪除')
+        navigate('/trip/activities')
+        return
+      }
       toast.error('儲存失敗')
       setSaving(false)
     } finally {
       submitting.current = false
     }
   }
+
+  const notFound = !isNew && !loading && !activities.some(a => a.id === id)
+
+  if (notFound) return (
+    <div className="px-4 py-16 flex flex-col items-center text-center gap-3">
+      <AlertTriangle size={40} style={{ color: 'var(--text-secondary)' }} />
+      <p className="text-primary text-base font-medium">找不到這個活動</p>
+      <p className="text-secondary text-sm">它可能已經被刪除或連結已失效</p>
+      <button
+        onClick={() => navigate('/trip/activities')}
+        className="btn-primary mt-2"
+      >回到活動行程</button>
+    </div>
+  )
 
   return (
     <div className="px-4 pb-36">

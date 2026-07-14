@@ -1,6 +1,6 @@
 ﻿import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Pencil, UtensilsCrossed, Ticket, Waves, Star, MapPin, Copy, Map, Navigation, Car, Bus, Footprints, Truck, Check, Bed } from 'lucide-react'
+import { ArrowLeft, Pencil, UtensilsCrossed, Ticket, Waves, Star, MapPin, Copy, Map, Navigation, Car, Bus, Footprints, Truck, Check, Bed, SearchX } from 'lucide-react'
 import { useState } from 'react'
 import { useActivities } from '../hooks/useActivities'
 import { ActivityDetailSkeleton } from '../components/Skeleton'
@@ -56,8 +56,14 @@ export default function ActivityDetailPage() {
   if (loading) return <ActivityDetailSkeleton />
 
   if (!activity) return (
-    <div className="px-4 py-8 text-center">
-      <p className="text-secondary">{t('activities.noData')}</p>
+    <div className="px-4 py-16 flex flex-col items-center text-center gap-3">
+      <SearchX size={40} style={{ color: 'var(--text-secondary)' }} />
+      <p className="text-primary text-base font-medium">找不到這個活動</p>
+      <p className="text-secondary text-sm">它可能已經被刪除或連結已失效</p>
+      <button
+        onClick={() => navigate('/trip/activities')}
+        className="btn-primary mt-2"
+      >回到活動行程</button>
     </div>
   )
 
