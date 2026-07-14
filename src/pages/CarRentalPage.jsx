@@ -168,9 +168,9 @@ export default function CarRentalPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-primary font-medium text-base leading-snug">{item.companyName}</p>
                     {item.address && (
-                      <button className="flex items-center gap-1 mt-1 text-secondary text-sm" onClick={() => openMap(item.address)}>
-                        <MapPin size={12} />
-                        <span className="truncate text-left">{item.address}</span>
+                      <button className="flex items-center gap-1 mt-1 text-secondary text-sm min-w-0 w-full" onClick={() => openMap(item.address)}>
+                        <MapPin size={12} className="flex-shrink-0" />
+                        <span className="truncate text-left min-w-0">{item.address}</span>
                       </button>
                     )}
                     {item.phone && (
