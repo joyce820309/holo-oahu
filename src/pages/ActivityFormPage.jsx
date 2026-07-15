@@ -575,6 +575,7 @@ export default function ActivityFormPage() {
   // Detect time overlap with other confirmed activities on the same date
   const overlapWarning = useMemo(() => {
     if (!form.date || !form.startTime) return null
+    if (form.alternativeFor) return null   // 備案本身不參與重疊偵測，本來就是替代選項
     const myStart = timeToMinutes(form.startTime)
     const myEnd   = form.endTime ? timeToMinutes(form.endTime) : myStart + 1
     if (myStart === null) return null
@@ -585,6 +586,7 @@ export default function ActivityFormPage() {
       a.startTime &&
       !a.flightId &&                       // 航班佔位不參與重疊偵測
       !a._hotelAnchor &&                   // 飯店佔位不參與
+      !a.alternativeFor &&                 // 備案不參與（僅為替代選項，本就與原方案同時段）
       a.segmentId !== 'transit' &&         // 轉機段（可能有時差）不參與
       form.segmentId !== 'transit'         // 自己是轉機段時也不偵測
     )
@@ -604,7 +606,7 @@ export default function ActivityFormPage() {
     return lang === 'zh-TW'
       ? `時間與「${names}」重疊`
       : `Time overlaps with: ${names}`
-  }, [form.date, form.startTime, form.endTime, activities, id, lang])
+  }, [form.date, form.startTime, form.endTime, form.alternativeFor, activities, id, lang])
 
   useEffect(() => {
     if (!isNew) {
@@ -773,7 +775,7 @@ export default function ActivityFormPage() {
         {form.alternativeFor && (
           <div className="glass-card p-4 flex items-center gap-2.5" style={{ background: 'color-mix(in srgb, #0ea5e9 6%, var(--glass-bg))', border: '0.5px solid color-mix(in srgb, #0ea5e9 30%, transparent)' }}>
             <CloudRain size={16} style={{ color: '#0369a1', flexShrink: 0 }} />
-            <p className="text-sm" style={{ color: '#0369a1' }}>這是雨備方案，會顯示在原活動卡片的展開內容中</p>
+            <p className="text-sm" style={{ color: '#0369a1' }}>這是備案，會顯示在原活動卡片的展開內容中</p>
           </div>
         )}
 
@@ -928,7 +930,7 @@ export default function ActivityFormPage() {
             onClick={addBackupPlan}
             style={{ fontSize: 13 }}
           >
-            <CloudRain size={15} />新增雨備方案
+            <CloudRain size={15} />新增備案
           </button>
         )}
 

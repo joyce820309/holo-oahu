@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Plus, Plane, ChevronDown, Check, Trash2, Pencil } from 'lucide-react'
+import { Plus, Plane, ChevronDown, Check, Trash2, Pencil, DoorOpen } from 'lucide-react'
 import { useFlights } from '../hooks/useFlights'
 import { useAuth } from '../contexts/AuthContext'
 import { syncFlightToActivities, deleteFlightActivities } from '../lib/syncFlightActivities'
@@ -148,6 +148,23 @@ function InputField({ label, value, onChange, type = 'text', placeholder }) {
   )
 }
 
+function PillChip({ children }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+      style={{
+        gap: 4,
+        background: 'color-mix(in srgb, var(--accent) 14%, var(--mini-bg))',
+        color: 'var(--accent)',
+        borderRadius: 9,
+      }}
+    >
+      <DoorOpen size={11} strokeWidth={2} />
+      {children}
+    </span>
+  )
+}
+
 function BilingualField({ label, inputLang, setInputLang, zhValue, enValue, onZhChange, onEnChange, placeholder }) {
   return (
     <div className="space-y-1">
@@ -257,20 +274,20 @@ function FlightForm({ initial, onSave, onCancel, id }) {
       {/* 出發 */}
       <div className="glass-card p-4 space-y-3">
         <p className="text-primary font-medium text-sm">{t('flights.fields.departAt')}</p>
-        <SelectField label="日期" value={form.departDate} onChange={v => set('departDate', v)} options={TRIP_DAYS} />
+        <SelectField label={t('flights.fields.date')} value={form.departDate} onChange={v => set('departDate', v)} options={TRIP_DAYS} />
         <div className="grid grid-cols-2 gap-3">
-          <TimeSelect label="時間" value={form.departTime} onChange={v => set('departTime', v)} />
-          <InputField label="航廈" value={form.departTerminal} onChange={v => set('departTerminal', v)} placeholder="T1 / T2" />
+          <TimeSelect label={t('flights.fields.time')} value={form.departTime} onChange={v => set('departTime', v)} />
+          <InputField label={t('flights.fields.terminal')} value={form.departTerminal} onChange={v => set('departTerminal', v)} placeholder="T1 / T2" />
         </div>
       </div>
 
       {/* 抵達 */}
       <div className="glass-card p-4 space-y-3">
         <p className="text-primary font-medium text-sm">{t('flights.fields.arriveAt')}</p>
-        <SelectField label="日期" value={form.arriveDate} onChange={v => set('arriveDate', v)} options={TRIP_DAYS} />
+        <SelectField label={t('flights.fields.date')} value={form.arriveDate} onChange={v => set('arriveDate', v)} options={TRIP_DAYS} />
         <div className="grid grid-cols-2 gap-3">
-          <TimeSelect label="時間" value={form.arriveTime} onChange={v => set('arriveTime', v)} />
-          <InputField label="航廈" value={form.arriveTerminal} onChange={v => set('arriveTerminal', v)} placeholder="T1 / T2" />
+          <TimeSelect label={t('flights.fields.time')} value={form.arriveTime} onChange={v => set('arriveTime', v)} />
+          <InputField label={t('flights.fields.terminal')} value={form.arriveTerminal} onChange={v => set('arriveTerminal', v)} placeholder="T1 / T2" />
         </div>
       </div>
 
@@ -388,12 +405,22 @@ export default function FlightsPage() {
                     <p className="text-secondary text-sm mt-0.5">{bi(f.from, lang)} → {bi(f.to, lang)}</p>
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       <div className="glass-mini p-2 rounded-xl">
-                        <p className="text-secondary text-xs">出發</p>
+                        <p className="text-secondary text-xs">{t('flights.fields.departAt')}</p>
                         <p className="text-primary text-sm font-medium">{fmtDT(f.departAt)}</p>
+                        {f.departTerminal && (
+                          <div className="mt-1.5">
+                            <PillChip>{`${t('flights.fields.terminal')} ${f.departTerminal}`}</PillChip>
+                          </div>
+                        )}
                       </div>
                       <div className="glass-mini p-2 rounded-xl">
-                        <p className="text-secondary text-xs">抵達</p>
+                        <p className="text-secondary text-xs">{t('flights.fields.arriveAt')}</p>
                         <p className="text-primary text-sm font-medium">{fmtDT(f.arriveAt)}</p>
+                        {f.arriveTerminal && (
+                          <div className="mt-1.5">
+                            <PillChip>{`${t('flights.fields.terminal')} ${f.arriveTerminal}`}</PillChip>
+                          </div>
+                        )}
                       </div>
                     </div>
                     {(f.seat || f.confirmCode) && (

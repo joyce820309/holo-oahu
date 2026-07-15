@@ -431,8 +431,10 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
   const Icon     = isFlight ? Plane : (TYPE_ICONS[activity.type] || MapPin)
   const crossDay = activity.startTime && activity.endTime && activity.endTime < activity.startTime
   const noteText = bi(activity.note, lang).trim()
+  const noteIsLong = noteText.length > 80 || (noteText.match(/\n/g)?.length ?? 0) >= 3
   const externalLink = normalizeExternalLink(activity.link || activity.mapLink)
   const [backupOpen, setBackupOpen] = useState(false)
+  const [noteExpanded, setNoteExpanded] = useState(false)
 
   const flightStyle = isFlight ? {
     background: 'color-mix(in srgb, var(--accent) 6%, var(--glass-bg))',
@@ -539,10 +541,9 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
               {activity.departTerminal && (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
-                  fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 99,
+                  fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 9,
                   background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                  color: 'var(--accent)',
-                  border: '0.5px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                  color: 'var(--accent)'
                 }}>
                   ✈ 出發 {activity.departTerminal}
                 </span>
@@ -550,10 +551,9 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
               {activity.arriveTerminal && (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
-                  fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 99,
+                  fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 9,
                   background: 'color-mix(in srgb, var(--accent) 12%, transparent)',
-                  color: 'var(--accent)',
-                  border: '0.5px solid color-mix(in srgb, var(--accent) 30%, transparent)',
+                  color: 'var(--accent)'
                 }}>
                   ✈ 抵達 {activity.arriveTerminal}
                 </span>
@@ -586,7 +586,28 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
                 borderRadius: 12,
               }}
             >
-              <NoteContent text={noteText} className="text-secondary text-xs leading-relaxed" />
+              <div
+                style={noteIsLong && !noteExpanded ? {
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                } : undefined}
+              >
+                <NoteContent text={noteText} className="text-secondary text-xs leading-relaxed" />
+              </div>
+              {noteIsLong && (
+                <button
+                  onClick={e => { e.stopPropagation(); setNoteExpanded(v => !v) }}
+                  className="inline-flex items-center gap-0.5 mt-1"
+                  style={{ color: 'var(--accent)', fontSize: 11, fontWeight: 500, cursor: 'pointer' }}
+                >
+                  {noteExpanded
+                    ? (lang === 'zh-TW' ? '收合' : 'Show less')
+                    : (lang === 'zh-TW' ? '展開' : 'Show more')}
+                  <ChevronDown size={11} style={{ transform: noteExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+                </button>
+              )}
             </div>
           ) : (
             <span
@@ -617,7 +638,7 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
                 }}
               >
                 <CloudRain size={11} />
-                {lang === 'zh-TW' ? '雨備方案' : 'Rain plan'}
+                {lang === 'zh-TW' ? '備案' : 'Backup Plan'}
                 <ChevronDown size={11} style={{ transform: backupOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
               </button>
               {backupOpen && (
@@ -637,7 +658,9 @@ function ActivityCard({ activity, lang, editMode, dragHandleProps, onMapOpen, on
                     <p className="mt-0.5">{bi(backupPlan.location, lang)}</p>
                   )}
                   {bi(backupPlan.note, lang) && (
-                    <p className="mt-1">{bi(backupPlan.note, lang)}</p>
+                    <div className="mt-1">
+                      <NoteContent text={bi(backupPlan.note, lang)} className="leading-relaxed" />
+                    </div>
                   )}
                   <button
                     onClick={() => onViewBackup ? onViewBackup(backupPlan.id) : null}
@@ -758,7 +781,10 @@ function DaySwapDialog({ lang, dates, fromDate, toDate, setFromDate, setToDate, 
 }
 
 // ── Date group ─────────────────────────────────────────────────────────────
-function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder, onDemote, onCopy, showNoteContent }) {
+function DateGroup({
+  date, items, editMode, lang, navigate, setDelId, onReorder, onDemote, onCopy, showNoteContent,
+  hasAltPlan, viewingAlt, onToggleAltView, onCreateAltPlan, onApplyAltPlan, creatingDayPlan, applyingDayPlan,
+}) {
   const { t } = useTranslation()
   const text = uiText(lang)
   const [localItems, setLocalItems] = useState(items)
@@ -823,9 +849,20 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
     onReorder(next)
   }
 
+  const dayPlanText = {
+    createCopy:  lang === 'zh-TW' ? '複製今天行程作為起點' : 'Copy today as a starting point',
+    createBlank: lang === 'zh-TW' ? '從空白開始' : 'Start from blank',
+    createLabel: lang === 'zh-TW' ? '＋ 建立整日備案' : '+ Create day plan B',
+    viewAlt:     lang === 'zh-TW' ? '查看備案' : 'View plan B',
+    viewingAlt:  lang === 'zh-TW' ? '目前顯示備案行程' : 'Showing backup plan',
+    backToMain:  lang === 'zh-TW' ? '回到正式行程' : 'Back to schedule',
+    apply:       lang === 'zh-TW' ? '套用為正式行程' : 'Apply as schedule',
+  }
+  const [createMenuOpen, setCreateMenuOpen] = useState(false)
+
   return (
     <div className="mb-8">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <p className="text-secondary text-sm font-medium">{date} <span style={{ fontSize: 11, opacity: 0.75 }}>{weekdayLabel(date)}</span></p>
         {isTransit && (
           <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
@@ -839,7 +876,86 @@ function DateGroup({ date, items, editMode, lang, navigate, setDelId, onReorder,
             <RotateCcw size={10} />{text.returnTrip}
           </span>
         )}
+
+        {!editMode && hasAltPlan && (
+          <button
+            onClick={onToggleAltView}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full ml-auto"
+            style={{
+              fontSize: 11.5, fontWeight: 600, cursor: 'pointer',
+              color: '#c17a3f',
+              background: 'color-mix(in srgb, #c17a3f 12%, transparent)',
+              border: '0.5px solid color-mix(in srgb, #c17a3f 40%, transparent)',
+            }}
+          ><ArrowLeftRight size={11} />{dayPlanText.viewAlt}</button>
+        )}
+
+        {!editMode && !hasAltPlan && (
+          <div className="relative ml-auto">
+            <button
+              onClick={() => setCreateMenuOpen(v => !v)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full"
+              style={{
+                fontSize: 11.5, fontWeight: 500, cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                background: 'var(--mini-bg)',
+                border: '0.5px solid var(--mini-border)',
+              }}
+            >{dayPlanText.createLabel}</button>
+            {createMenuOpen && (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setCreateMenuOpen(false)} />
+                <div
+                  className="absolute right-0 mt-1 py-1"
+                  style={{
+                    zIndex: 41, minWidth: 200, borderRadius: 12,
+                    background: 'var(--glass-bg)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+                    border: '0.5px solid var(--glass-border)', boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  <button
+                    onClick={() => { setCreateMenuOpen(false); onCreateAltPlan('copy') }}
+                    disabled={creatingDayPlan}
+                    className="w-full text-left px-3.5 py-2.5"
+                    style={{ fontSize: 13, color: 'var(--text-primary)', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >{dayPlanText.createCopy}</button>
+                  <button
+                    onClick={() => { setCreateMenuOpen(false); onCreateAltPlan('blank') }}
+                    disabled={creatingDayPlan}
+                    className="w-full text-left px-3.5 py-2.5"
+                    style={{ fontSize: 13, color: 'var(--text-primary)', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >{dayPlanText.createBlank}</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
+
+      {viewingAlt && (
+        <div
+          className="flex items-center justify-between gap-2 px-3.5 py-2.5 mb-3"
+          style={{
+            borderRadius: 12,
+            background: 'color-mix(in srgb, #c17a3f 10%, var(--glass-bg))',
+            border: '0.5px solid color-mix(in srgb, #c17a3f 40%, transparent)',
+            fontSize: 12.5, fontWeight: 600, color: '#c17a3f',
+          }}
+        >
+          <span className="inline-flex items-center gap-1.5"><ArrowLeftRight size={13} />{dayPlanText.viewingAlt}</span>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <button
+              onClick={onApplyAltPlan}
+              disabled={applyingDayPlan}
+              style={{ color: 'var(--accent)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5 }}
+            >{dayPlanText.apply}</button>
+            <button
+              onClick={onToggleAltView}
+              style={{ color: 'var(--text-secondary)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5 }}
+            >{dayPlanText.backToMain}</button>
+          </div>
+        </div>
+      )}
 
       <div className="relative">
         {!editMode && (
@@ -1046,7 +1162,7 @@ function getInitialTab() {
 }
 
 // ── Day tabs ───────────────────────────────────────────────────────────────
-function DayTabs({ activeTab, onChange, lang }) {
+function DayTabs({ activeTab, onChange, lang, altDates }) {
   const scrollRef  = useRef(null)
   const activeRef  = useRef(null)
   const [canScroll, setCanScroll] = useState(false)
@@ -1102,12 +1218,14 @@ function DayTabs({ activeTab, onChange, lang }) {
           const isActive = tab.id === activeTab
           const weekendColor = 'var(--weekend-color)'
           const activeColor = tab.isWeekend ? weekendColor : 'var(--accent)'
+          const hasAltPlan = altDates?.has(tab.id)
           return (
             <button
               key={tab.id}
               ref={isActive ? activeRef : null}
               onClick={() => onChange(tab.id)}
               style={{
+                position: 'relative',
                 flexShrink: 0,
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
@@ -1124,6 +1242,7 @@ function DayTabs({ activeTab, onChange, lang }) {
                 minWidth: tab.dayOfMonth ? 40 : 40,
                 textAlign: 'center',
                 transition: 'border-color 0.15s, background 0.15s',
+                marginBottom: hasAltPlan ? 9 : 0,
               }}
             >
               {tab.dayOfMonth ? (
@@ -1134,6 +1253,25 @@ function DayTabs({ activeTab, onChange, lang }) {
                 </>
               ) : (
                 <span style={{ fontSize: 12, fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--accent)' : 'var(--text-secondary)' }}>{tab.label}</span>
+              )}
+              {hasAltPlan && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: -9,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: 8,
+                    fontWeight: 700,
+                    letterSpacing: '0.02em',
+                    color: '#c17a3f',
+                    background: 'var(--glass-bg)',
+                    padding: '1px 5px',
+                    borderRadius: 6,
+                    border: '1px solid color-mix(in srgb, #c17a3f 45%, transparent)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >{lang === 'zh-TW' ? '備案' : 'Plan B'}</span>
               )}
             </button>
           )
@@ -1219,7 +1357,7 @@ function DraftList({ drafts, lang, navigate, setDelId, onPromote }) {
 // ── Page ──────────────────────────────────────────────────────────────────
 export default function ActivitiesPage() {
   const { t, i18n } = useTranslation()
-  const { activities, loading, addActivity, deleteActivity, updateActivity } = useActivities()
+  const { activities, loading, addActivity, deleteActivity, updateActivity, applyDayPlan, createDayPlan } = useActivities()
   const { flights, deleteFlight } = useFlights()
   const navigate   = useNavigate()
   const [searchParams] = useSearchParams()
@@ -1227,6 +1365,9 @@ export default function ActivitiesPage() {
   const [deletingIds, setDeletingIds] = useState(() => new Set())
   const [editMode, setEditMode]   = useState(false)
   const copying = useRef(new Set())
+  const [viewingAltDate, setViewingAltDate] = useState(null)
+  const [applyingDayPlan, setApplyingDayPlan] = useState(false)
+  const [creatingDayPlan, setCreatingDayPlan] = useState(false)
   useEffect(() => {
     document.body.classList.toggle('edit-mode', editMode)
     return () => document.body.classList.remove('edit-mode')
@@ -1278,20 +1419,33 @@ export default function ActivitiesPage() {
   const confirmed = visibleActivities.filter(a => (a.status ?? 'confirmed') === 'confirmed')
   const drafts    = visibleActivities.filter(a => a.status === 'draft')
 
-  const sorted = [...confirmed].sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date)
+  // 整日備案（dayPlan: 'alternate'）與正式行程（未設定或 'primary'）分開排序、分組。
+  const primaryConfirmed = confirmed.filter(a => a.dayPlan !== 'alternate')
+  const altConfirmed     = confirmed.filter(a => a.dayPlan === 'alternate')
+
+  const sortByOrder = (a, b) => {
     const af = a.flightId ? 1 : 0, bf = b.flightId ? 1 : 0
     if (af !== bf) return af - bf
     const oa = a.order ?? 9999, ob = b.order ?? 9999
     if (oa !== ob) return oa - ob
     return (a.startTime || '').localeCompare(b.startTime || '')
-  })
+  }
+
+  const sorted = [...primaryConfirmed].sort((a, b) => a.date !== b.date ? a.date.localeCompare(b.date) : sortByOrder(a, b))
 
   const byDate = sorted.reduce((acc, a) => {
     acc[a.date] = acc[a.date] || []
     acc[a.date].push(a)
     return acc
   }, {})
+
+  // 依 altGroupId 分組，一天理論上只會有一組「目前」的整日備案（最新建立的那組）。
+  const altByDate = altConfirmed.reduce((acc, a) => {
+    acc[a.date] = acc[a.date] || []
+    acc[a.date].push(a)
+    return acc
+  }, {})
+  Object.keys(altByDate).forEach(date => altByDate[date].sort(sortByOrder))
 
   const allDates = Object.keys(byDate).sort()
   const visibleDates = activeTab === 'all' ? allDates : allDates.filter(d => d === activeTab)
@@ -1308,6 +1462,65 @@ export default function ActivitiesPage() {
 
   async function handleReorder(date, reorderedItems) {
     await Promise.all(reorderedItems.map((item, idx) => updateActivity(item.id, { order: idx })))
+  }
+
+  async function handleApplyDayPlan(date) {
+    if (applyingDayPlan) return
+    const primaryIds = (byDate[date] || []).map(a => a.id)
+    const altIds = (altByDate[date] || []).map(a => a.id)
+    if (altIds.length === 0) return
+    if (!window.confirm(
+      lang === 'zh-TW'
+        ? '確定要將這天換成備案行程嗎？原本的正式行程會保留，之後仍可以換回來。'
+        : 'Switch this day to the backup plan? The current schedule is kept and can be switched back later.'
+    )) return
+    setApplyingDayPlan(true)
+    try {
+      await applyDayPlan(primaryIds, altIds)
+      setViewingAltDate(null)
+      toast.success(lang === 'zh-TW' ? '已套用備案' : 'Backup plan applied')
+    } catch (err) {
+      console.error('[ActivitiesPage] apply day plan failed:', err.code, err.message)
+      toast.error(lang === 'zh-TW' ? '套用失敗' : 'Failed to apply')
+    } finally {
+      setApplyingDayPlan(false)
+    }
+  }
+
+  async function handleCreateDayPlan(date, mode) {
+    if (creatingDayPlan) return
+    setCreatingDayPlan(true)
+    try {
+      const sourceActivities = mode === 'copy'
+        ? (byDate[date] || []).map(a => {
+            const rest = { ...a }
+            delete rest.id
+            delete rest.createdAt
+            return rest
+          })
+        : [{
+            title: { zh: '', en: '' },
+            location: { zh: '', en: '' },
+            address: { zh: '', en: '' },
+            note: { zh: '', en: '' },
+            type: 'attraction',
+            date,
+            startTime: '', endTime: '',
+            lat: null, lng: null, link: '',
+            segmentId: 'hawaii', order: 0,
+            images: [],
+            status: 'confirmed',
+            transportAfter: { mode: 'none', durationMin: '', note: { zh: '', en: '' } },
+          }]
+      await createDayPlan(sourceActivities)
+      toast.success(lang === 'zh-TW' ? '已建立整日備案' : 'Day plan B created')
+      setViewingAltDate(date)
+    } catch (err) {
+      console.error('[ActivitiesPage] create day plan failed:', err.code, err.message)
+      toast.error(lang === 'zh-TW' ? '建立失敗' : 'Failed to create')
+    } finally {
+      setCreatingDayPlan(false)
+    }
   }
 
   async function handleSwapDays() {
@@ -1598,8 +1811,9 @@ export default function ActivitiesPage() {
           {!loading && (
             <DayTabs
               activeTab={activeTab}
-              onChange={tab => { setActiveTab(tab); sessionStorage.setItem('activities_tab', tab); setEditMode(false) }}
+              onChange={tab => { setActiveTab(tab); sessionStorage.setItem('activities_tab', tab); setEditMode(false); setViewingAltDate(null) }}
               lang={lang}
+              altDates={new Set(Object.keys(altByDate))}
             />
           )}
 
@@ -1612,7 +1826,7 @@ export default function ActivitiesPage() {
             <DateGroup
               key={date}
               date={date}
-              items={byDate[date]}
+              items={viewingAltDate === date ? (altByDate[date] || []) : byDate[date]}
               editMode={editMode}
               lang={lang}
               navigate={navigate}
@@ -1621,6 +1835,13 @@ export default function ActivitiesPage() {
               onReorder={(reordered) => handleReorder(date, reordered)}
               onDemote={demote}
               onCopy={handleCopyActivity}
+              hasAltPlan={!!(altByDate[date]?.length)}
+              viewingAlt={viewingAltDate === date}
+              onToggleAltView={() => setViewingAltDate(v => v === date ? null : date)}
+              onCreateAltPlan={mode => handleCreateDayPlan(date, mode)}
+              onApplyAltPlan={() => handleApplyDayPlan(date)}
+              creatingDayPlan={creatingDayPlan}
+              applyingDayPlan={applyingDayPlan}
             />
           ))}
 
